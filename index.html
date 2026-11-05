@@ -132,12 +132,6 @@
   .ptable input:focus { outline: 2px solid var(--accent); }
   .check { display: flex; align-items: center; gap: 8px; margin-top: 14px; font-size: 14px; color: var(--muted); }
   .card .sub-line { font-size: 14px; margin-top: 2px; }
-  .import-row { display: flex; gap: 8px; flex-wrap: wrap; }
-  .import-row input {
-    flex: 1; min-width: 200px; background: var(--field); border: 0; border-radius: 8px;
-    color: var(--text); font: inherit; padding: 11px 12px; outline: 0;
-  }
-  .import-row input:focus { outline: 2px solid var(--accent); }
   .btn-s {
     background: #234a63; color: var(--text); border: 0; border-radius: 8px;
     padding: 10px 14px; font: inherit; font-weight: 600; cursor: pointer;
@@ -162,6 +156,21 @@
   .saved-item .n { font-weight: 600; }
   .saved-item .s { font-size: 13px; color: var(--muted); }
   .saved-item .b { display: flex; gap: 8px; }
+  .sugg-wrap { position: relative; margin-bottom: 18px; }
+  .suggest {
+    display: none; position: absolute; left: 0; right: 0; top: 100%; z-index: 20;
+    margin-top: 4px; max-height: 280px; overflow-y: auto;
+    background: #1b1b1b; border: 1px solid var(--border); border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.5);
+  }
+  .suggest.open { display: block; }
+  .suggest > div {
+    padding: 10px 12px; cursor: pointer; display: flex; justify-content: space-between; gap: 10px;
+  }
+  .suggest > div:hover, .suggest > div.sel { background: var(--field); }
+  .suggest small { color: var(--muted); white-space: nowrap; }
+  .suggest .info { color: var(--muted); cursor: default; }
+  .suggest .info:hover { background: none; }
   .more-list { display: grid; gap: 10px; }
   .more-list a {
     display: block; background: var(--panel); border: 1px solid var(--border);
@@ -193,17 +202,14 @@
   <section id="investissements">
     <h2>Investissements</h2>
 
-    <div class="section-title">Importer une recette depuis DofusDB (optionnel)</div>
-    <div class="import-row">
-      <input id="ivUrl" type="text" placeholder="Lien DofusDB ou numéro de l'item (ex. 33607)">
-      <button class="btn-s" id="ivImport">Importer la recette</button>
+    <div class="sugg-wrap" style="margin-bottom:0">
+      <label class="field" style="margin-bottom:0">
+        <span>Nom de l'item</span>
+        <div class="input-wrap"><input id="ivName" type="text" autocomplete="off" placeholder="Recherche un item (ex. Arc du Karkanik)"></div>
+      </label>
+      <div class="suggest" id="ivSuggest"></div>
     </div>
-    <div class="msg" id="ivMsg"></div>
-
-    <label class="field">
-      <span>Nom de l'item</span>
-      <div class="input-wrap"><input id="ivName" type="text" placeholder="Nom de l'item"></div>
-    </label>
+    <div class="msg" id="ivMsg" style="margin-bottom:10px"></div>
 
     <label class="field">
       <span>Prix de vente</span>
@@ -784,7 +790,6 @@
   var API = 'https://api.dofusdb.fr';
   var iv = { rows: [], editing: null };
   var ivEl = {
-    url: document.getElementById('ivUrl'), importBtn: document.getElementById('ivImport'),
     msg: document.getElementById('ivMsg'), saveMsg: document.getElementById('ivSaveMsg'),
     name: document.getElementById('ivName'), prix: document.getElementById('ivPrix'),
     tbody: document.getElementById('ivRows'), add: document.getElementById('ivAdd'),
@@ -930,11 +935,7 @@
     }).catch(function () { return 'Ressource n°' + id; });
   }
 
-  function ivImport() {
-    var m = String(ivEl.url.value).match(/(\d+)(?!.*\d)/);
-    if (!m) { setMsg(ivEl.msg, 'Colle un lien DofusDB (ex. …/item/33607) ou un numéro d\'item.', 'err'); return; }
-    var id = m[1];
-    ivEl.importBtn.disabled = true;
+  function ivImportId(id) {
     setMsg(ivEl.msg, 'Import en cours…');
 
     getJson(API + '/recipes/' + id)
@@ -962,11 +963,8 @@
       })
       .catch(function (err) {
         setMsg(ivEl.msg, 'Import impossible (' + err.message + '). Tu peux saisir la recette à la main.', 'err');
-      })
-      .then(function () { ivEl.importBtn.disabled = false; });
+      });
   }
-  ivEl.importBtn.addEventListener('click', ivImport);
-  ivEl.url.addEventListener('keydown', function (e) { if (e.key === 'Enter') ivImport(); });
 
   // ----- Crafts enregistrés -----
   function ivSaved() {
@@ -1010,7 +1008,6 @@
   });
   ivEl.clear.addEventListener('click', function () {
     ivApply({});
-    ivEl.url.value = '';
     setMsg(ivEl.msg, '');
     setMsg(ivEl.saveMsg, '');
   });
@@ -1033,6 +1030,88 @@
       if (iv.editing === rid) iv.editing = null;
       ivRenderList();
     }
+  });
+
+  // ----- Recherche d'item (menu déroulant) -----
+  var sug = document.getElementById('ivSuggest');
+  var sugItems = [], sugSel = -1, sugTimer = null, sugSeq = 0;
+
+  function slugify(s) {
+    return String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  }
+  function sugClose() {
+    sug.className = 'suggest';
+    sug.innerHTML = '';
+    sugItems = [];
+    sugSel = -1;
+  }
+  function sugInfo(text) {
+    sug.className = 'suggest open';
+    sug.innerHTML = '<div class="info">' + esc(text) + '</div>';
+  }
+  function sugRender() {
+    sug.className = 'suggest open';
+    sug.innerHTML = sugItems.map(function (it, i) {
+      return '<div data-pick="' + i + '" class="' + (i === sugSel ? 'sel' : '') + '"><span>' +
+        esc(it.name) + '</span>' + (it.level ? '<small>Niv. ' + esc(it.level) + '</small>' : '') + '</div>';
+    }).join('');
+  }
+  function sugSearch(term) {
+    var seq = ++sugSeq;
+    var rx = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    var base = API + '/items?lang=fr&$limit=12&$select[]=id&$select[]=name&$select[]=level';
+    // Plusieurs formulations tentées l'une après l'autre jusqu'à obtenir des résultats
+    var tries = [
+      base + '&name.fr[$regex]=' + encodeURIComponent(rx) + '&name.fr[$options]=i',
+      base + '&slug.fr[$regex]=' + encodeURIComponent(slugify(term))
+    ];
+    function attempt(k) {
+      if (k >= tries.length) return Promise.resolve([]);
+      return getJson(tries[k]).then(function (r) {
+        var list = (r && r.data ? r.data : (Array.isArray(r) ? r : []))
+          .map(function (o) { return { id: o.id, name: nameOf(o), level: o.level }; })
+          .filter(function (o) { return o.id && o.name; });
+        return list.length ? list : attempt(k + 1);
+      }).catch(function () { return attempt(k + 1); });
+    }
+    sugInfo('Recherche…');
+    attempt(0).then(function (list) {
+      if (seq !== sugSeq) return;
+      if (!list.length) { sugInfo('Aucun résultat'); return; }
+      sugItems = list;
+      sugSel = -1;
+      sugRender();
+    });
+  }
+  function sugPick(i) {
+    var it = sugItems[i];
+    if (!it) return;
+    ivEl.name.value = it.name;
+    sugSeq++;
+    sugClose();
+    ivImportId(it.id);
+  }
+
+  ivEl.name.addEventListener('input', function () {
+    clearTimeout(sugTimer);
+    var term = ivEl.name.value.trim();
+    if (term.length < 3) { sugSeq++; sugClose(); return; }
+    sugTimer = setTimeout(function () { sugSearch(term); }, 300);
+  });
+  ivEl.name.addEventListener('keydown', function (e) {
+    if (!sugItems.length) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); sugSel = (sugSel + 1) % sugItems.length; sugRender(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); sugSel = (sugSel - 1 + sugItems.length) % sugItems.length; sugRender(); }
+    else if (e.key === 'Enter' && sugSel >= 0) { e.preventDefault(); sugPick(sugSel); }
+    else if (e.key === 'Escape') { sugClose(); }
+  });
+  sug.addEventListener('click', function (e) {
+    var d = e.target.closest ? e.target.closest('[data-pick]') : null;
+    if (d) sugPick(+d.dataset.pick);
+  });
+  document.addEventListener('click', function (e) {
+    if (!e.target.closest || !e.target.closest('.sugg-wrap')) { sugSeq++; sugClose(); }
   });
 
   // Restaure le brouillon en cours
