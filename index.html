@@ -156,6 +156,20 @@
   .saved-item .n { font-weight: 600; }
   .saved-item .s { font-size: 13px; color: var(--muted); }
   .saved-item .b { display: flex; gap: 8px; }
+  .iv-sec {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 14px;
+    padding: 18px 16px; margin-bottom: 24px;
+  }
+  .iv-sec .result { background: none; border: 0; padding: 0; }
+  .item-head { display: none; align-items: center; gap: 14px; margin-top: 14px; }
+  .item-head.on { display: flex; }
+  .item-head .hn { font-size: 18px; font-weight: 700; }
+  img.hi { width: 64px; height: 64px; object-fit: contain; background: var(--field); border-radius: 10px; padding: 6px; }
+  img.ri { width: 32px; height: 32px; object-fit: contain; flex: none; }
+  img.si { width: 22px; height: 22px; object-fit: contain; flex: none; }
+  .rname { display: flex; align-items: center; gap: 8px; }
+  .suggest > div > span { display: flex; align-items: center; gap: 10px; }
+  .saved-item .n { display: flex; align-items: center; gap: 10px; }
   .sugg-wrap { position: relative; margin-bottom: 18px; }
   .suggest {
     display: none; position: absolute; left: 0; right: 0; top: 100%; z-index: 20;
@@ -202,74 +216,81 @@
   <section id="investissements">
     <h2>Investissements</h2>
 
-    <div class="sugg-wrap" style="margin-bottom:0">
-      <label class="field" style="margin-bottom:0">
-        <span>Nom de l'item</span>
-        <div class="input-wrap"><input id="ivName" type="text" autocomplete="off" placeholder="Recherche un item (ex. Arc du Karkanik)"></div>
-      </label>
-      <div class="suggest" id="ivSuggest"></div>
-    </div>
-    <div class="msg" id="ivMsg" style="margin-bottom:10px"></div>
-
-    <label class="field">
-      <span>Prix de vente</span>
-      <div class="input-wrap">
-        <input id="ivPrix" type="number" inputmode="decimal" min="0" step="any">
-        <span class="unit">K</span>
+    <div class="iv-sec">
+      <div class="sugg-wrap" style="margin-bottom:0">
+        <label class="field" style="margin-bottom:0">
+          <span>Nom de l'item</span>
+          <div class="input-wrap"><input id="ivName" type="text" autocomplete="off" placeholder="Recherche un item (ex. Arc du Karkanik)"></div>
+        </label>
+        <div class="suggest" id="ivSuggest"></div>
       </div>
-    </label>
-
-    <hr>
-
-    <div class="section-title">Recette : ressources nécessaires</div>
-    <div class="ptable">
-      <table class="rtable">
-        <thead>
-          <tr><th>Ressource</th><th>Quantité</th><th>Prix unitaire (K)</th><th class="rt">Total</th><th></th></tr>
-        </thead>
-        <tbody id="ivRows"></tbody>
-      </table>
+      <div class="msg" id="ivMsg" style="margin-bottom:0"></div>
+      <div class="item-head" id="ivHead"></div>
     </div>
-    <button class="btn-s" id="ivAdd" style="margin-top:10px">+ Ajouter une ressource</button>
 
-    <details id="ivForge">
-      <summary>🪄 Forgemagie (optionnel)</summary>
-      <label class="field" style="margin-top:12px">
+    <div class="iv-sec">
+      <div class="section-title">Recette : ressources nécessaires</div>
+      <div class="ptable">
+        <table class="rtable">
+          <thead>
+            <tr><th>Ressource</th><th>Quantité</th><th>Prix unitaire (K)</th></tr>
+          </thead>
+          <tbody id="ivRows"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="iv-sec">
+      <div class="section-title">🪄 Forgemagie (optionnel)</div>
+      <label class="field">
         <span>Valeur estimée du stock de runes avant</span>
         <div class="input-wrap">
           <input id="ivAvant" type="number" inputmode="decimal" step="any">
           <span class="unit">K</span>
         </div>
       </label>
-      <label class="field">
+      <label class="field" style="margin-bottom:0">
         <span>Valeur estimée du stock de runes après</span>
         <div class="input-wrap">
           <input id="ivApres" type="number" inputmode="decimal" step="any">
           <span class="unit">K</span>
         </div>
       </label>
-    </details>
-
-    <hr style="margin-top:20px">
-
-    <div class="result">
-      <div class="card"><div class="k">Coût des ressources</div><div class="v" id="ivCout">–</div></div>
-      <div class="card" id="ivGainCard" style="display:none"><div class="k">Gain forgemagie</div><div class="v" id="ivGain">–</div></div>
-      <div class="card"><div class="k">Bénéfice net</div><div class="v" id="ivNet">–</div></div>
-      <div class="card"><div class="k">Seuil de rentabilité</div><div class="v" id="ivSeuil">–</div></div>
     </div>
-    <p class="opt" style="margin-top:8px">
-      Le seuil de rentabilité est le prix de vente minimum (après taxe de 2 %) pour ne pas perdre d'argent avec les prix saisis.
-    </p>
 
-    <div class="actions">
-      <button class="btn-s" id="ivSave">💾 Enregistrer</button>
-      <button class="btn-s" id="ivClear">🗑 Vider le formulaire</button>
+    <div class="iv-sec">
+      <div class="section-title">Vente</div>
+      <label class="field" style="margin-bottom:0">
+        <span>Prix de vente</span>
+        <div class="input-wrap">
+          <input id="ivPrix" type="number" inputmode="decimal" min="0" step="any">
+          <span class="unit">K</span>
+        </div>
+      </label>
     </div>
-    <div class="msg" id="ivSaveMsg"></div>
 
-    <div class="section-title" style="margin-top:26px">Mes crafts enregistrés</div>
-    <div id="ivList"></div>
+    <div class="iv-sec">
+      <div class="section-title">Résultat</div>
+      <div class="result">
+        <div class="card" id="ivGainCard" style="display:none"><div class="k">Gain forgemagie</div><div class="v" id="ivGain">–</div></div>
+        <div class="card"><div class="k">Bénéfice net</div><div class="v" id="ivNet">–</div></div>
+        <div class="card"><div class="k">Seuil de rentabilité</div><div class="v" id="ivSeuil">–</div></div>
+      </div>
+      <p class="opt" style="margin:10px 0 0">
+        Le seuil de rentabilité est le prix de vente minimum (après taxe de 2 %) pour ne pas perdre d'argent avec les prix saisis.
+      </p>
+
+      <div class="actions">
+        <button class="btn-s" id="ivSave">💾 Enregistrer</button>
+        <button class="btn-s" id="ivClear">🗑 Vider le formulaire</button>
+      </div>
+      <div class="msg" id="ivSaveMsg" style="margin-bottom:0"></div>
+    </div>
+
+    <div class="iv-sec">
+      <div class="section-title">Mes crafts enregistrés</div>
+      <div id="ivList"></div>
+    </div>
   </section>
 
   <section id="calculateurs" class="active">
@@ -788,14 +809,14 @@
 
   // ---------- Investissements (rentabilité d'un craft) ----------
   var API = 'https://api.dofusdb.fr';
-  var iv = { rows: [], editing: null };
+  var iv = { rows: [], editing: null, icon: null };
   var ivEl = {
+    head: document.getElementById('ivHead'),
     msg: document.getElementById('ivMsg'), saveMsg: document.getElementById('ivSaveMsg'),
     name: document.getElementById('ivName'), prix: document.getElementById('ivPrix'),
-    tbody: document.getElementById('ivRows'), add: document.getElementById('ivAdd'),
-    forge: document.getElementById('ivForge'),
+    tbody: document.getElementById('ivRows'),
     avant: document.getElementById('ivAvant'), apres: document.getElementById('ivApres'),
-    cout: document.getElementById('ivCout'), gainCard: document.getElementById('ivGainCard'),
+    gainCard: document.getElementById('ivGainCard'),
     gain: document.getElementById('ivGain'), net: document.getElementById('ivNet'),
     seuil: document.getElementById('ivSeuil'),
     save: document.getElementById('ivSave'), clear: document.getElementById('ivClear'),
@@ -820,15 +841,36 @@
     node.className = 'msg' + (cls ? ' ' + cls : '');
   }
 
+  // Images des items : DofusDB en premier, puis le site d'Ankama en secours
+  function imgTag(iconId, cls) {
+    if (!iconId) return '';
+    var u1 = API + '/img/items/' + iconId + '.png';
+    var u2 = 'https://static.ankama.com/dofus/www/game/items/200/' + iconId + '.png';
+    return '<img class="' + cls + '" src="' + u1 + '" data-alt="' + u2 + '" alt="" loading="lazy" onerror="ivImgErr(this)">';
+  }
+  function ivImgErr(img) {
+    if (img.dataset.alt) { var a = img.dataset.alt; img.dataset.alt = ''; img.src = a; }
+    else { img.style.display = 'none'; }
+  }
+  function ivRenderHead() {
+    var name = ivEl.name.value.trim();
+    if (iv.icon && name) {
+      ivEl.head.className = 'item-head on';
+      ivEl.head.innerHTML = imgTag(iv.icon, 'hi') + '<div class="hn">' + esc(name) + '</div>';
+    } else {
+      ivEl.head.className = 'item-head';
+      ivEl.head.innerHTML = '';
+    }
+  }
+
   function ivRenderRows() {
     var h = '';
     iv.rows.forEach(function (r, i) {
       h += '<tr>' +
-        '<td><input type="text" data-i="' + i + '" data-f="name" placeholder="Ressource" value="' + esc(r.name) + '" style="min-width:150px"></td>' +
+        '<td><div class="rname">' + imgTag(r.icon, 'ri') +
+        '<input type="text" data-i="' + i + '" data-f="name" placeholder="Ressource" value="' + esc(r.name) + '" style="min-width:140px"></div></td>' +
         '<td><input type="number" inputmode="decimal" min="0" step="any" data-i="' + i + '" data-f="qty" placeholder="0" value="' + esc(r.qty) + '" style="min-width:64px"></td>' +
         '<td><input type="number" inputmode="decimal" min="0" step="any" data-i="' + i + '" data-f="price" placeholder="0" value="' + esc(r.price) + '"></td>' +
-        '<td class="rt" id="ivSub' + i + '">–</td>' +
-        '<td><button class="x" data-del="' + i + '" title="Retirer cette ressource">✕</button></td>' +
         '</tr>';
     });
     ivEl.tbody.innerHTML = h;
@@ -854,7 +896,6 @@
       var cell = document.getElementById('ivSub' + i);
       if (cell) cell.textContent = s ? fmtInt(s) : '–';
     });
-    ivEl.cout.textContent = fmtInt(c.cout) + ' K';
     ivEl.gainCard.style.display = c.forgeUsed ? '' : 'none';
     setSigned(ivEl.gain, (c.gain > 0 ? '+' : '') + fmtInt(c.gain) + ' K', c.gain);
     setSigned(ivEl.net, fmtInt(c.net) + ' K', c.net);
@@ -865,19 +906,20 @@
   function ivSnapshot() {
     return {
       name: ivEl.name.value, prix: ivEl.prix.value, rows: iv.rows,
-      avant: ivEl.avant.value, apres: ivEl.apres.value, editing: iv.editing
+      avant: ivEl.avant.value, apres: ivEl.apres.value, editing: iv.editing, icon: iv.icon
     };
   }
   function ivApply(d) {
     ivEl.name.value = d.name || '';
     ivEl.prix.value = d.prix || '';
     iv.rows = (d.rows && d.rows.length) ? d.rows.map(function (r) {
-      return { name: r.name || '', qty: r.qty, price: r.price };
-    }) : blankRows(4);
+      return { name: r.name || '', qty: r.qty, price: r.price, icon: r.icon };
+    }) : blankRows(8);
     ivEl.avant.value = d.avant || '';
     ivEl.apres.value = d.apres || '';
-    ivEl.forge.open = !!(d.avant || d.apres);
     iv.editing = d.editing || null;
+    iv.icon = d.icon || null;
+    ivRenderHead();
     ivRenderRows();
     ivCompute();
   }
@@ -890,21 +932,12 @@
       ivCompute();
     }
   });
-  ivEl.tbody.addEventListener('click', function (e) {
-    var b = e.target.closest ? e.target.closest('[data-del]') : null;
-    if (!b) return;
-    iv.rows.splice(+b.dataset.del, 1);
-    if (!iv.rows.length) iv.rows = blankRows(1);
-    ivRenderRows();
-    ivCompute();
-  });
-  ivEl.add.addEventListener('click', function () {
-    iv.rows.push({ name: '', qty: '', price: '' });
-    ivRenderRows();
-    ivCompute();
-  });
   [ivEl.name, ivEl.prix, ivEl.avant, ivEl.apres].forEach(function (i) {
     i.addEventListener('input', ivCompute);
+  });
+  // Si on retape le nom à la main, l'image de l'ancien item n'a plus lieu d'être
+  ivEl.name.addEventListener('input', function () {
+    if (iv.icon) { iv.icon = null; ivRenderHead(); }
   });
 
   // ----- Import depuis DofusDB -----
@@ -924,15 +957,17 @@
     if (n && typeof n === 'object') n = n.fr || n.en || '';
     return n || '';
   }
-  function itemName(id) {
-    return getJson(API + '/items/' + id + '?lang=fr').then(nameOf).then(function (n) {
-      if (n) return n;
-      throw new Error('nom introuvable');
+  function itemInfo(id) {
+    return getJson(API + '/items/' + id + '?lang=fr').then(function (o) {
+      var n = nameOf(o);
+      if (!n) throw new Error('nom introuvable');
+      return { name: n, icon: o.iconId || null };
     }).catch(function () {
       return getJson(API + '/items?id=' + id + '&lang=fr&$limit=1').then(function (r) {
-        return nameOf(firstOf(r)) || ('Ressource n°' + id);
+        var o = firstOf(r);
+        return { name: nameOf(o) || ('Ressource n°' + id), icon: o ? (o.iconId || null) : null };
       });
-    }).catch(function () { return 'Ressource n°' + id; });
+    }).catch(function () { return { name: 'Ressource n°' + id, icon: null }; });
   }
 
   function ivImportId(id) {
@@ -946,17 +981,20 @@
           throw new Error('aucune recette trouvée pour cet item');
         }
         var ids = [id].concat(rec.ingredientIds);
-        return Promise.all(ids.map(itemName)).then(function (names) {
-          return { rec: rec, names: names };
+        return Promise.all(ids.map(itemInfo)).then(function (infos) {
+          return { rec: rec, infos: infos };
         });
       })
       .then(function (res) {
         iv.rows = res.rec.ingredientIds.map(function (_, k) {
-          return { name: res.names[k + 1], qty: res.rec.quantities ? res.rec.quantities[k] : '', price: '' };
+          var info = res.infos[k + 1];
+          return { name: info.name, icon: info.icon, qty: res.rec.quantities ? res.rec.quantities[k] : '', price: '' };
         });
-        if (res.names[0] && !res.names[0].indexOf('Ressource n°')) { /* nom indisponible : on garde la saisie */ }
-        else ivEl.name.value = res.names[0];
+        var head = res.infos[0];
+        if (head.name.indexOf('Ressource n°') !== 0) ivEl.name.value = head.name; // sinon on garde la saisie
+        iv.icon = head.icon;
         iv.editing = null;
+        ivRenderHead();
         ivRenderRows();
         ivCompute();
         setMsg(ivEl.msg, 'Recette importée (' + iv.rows.length + ' ressources). Il te reste à saisir les prix.', 'ok');
@@ -980,7 +1018,7 @@
       return;
     }
     ivEl.list.innerHTML = a.map(function (it) {
-      return '<div class="saved-item"><div><div class="n">' + esc(it.name) + '</div>' +
+      return '<div class="saved-item"><div><div class="n">' + imgTag(it.icon, 'si') + '<span>' + esc(it.name) + '</span></div>' +
         '<div class="s">Seuil : ' + (it.seuil === null ? '–' : fmtInt(it.seuil) + ' K') + '</div></div>' +
         '<div class="v ' + (it.net >= 0 ? 'pos' : 'neg') + '" style="font-size:18px;font-weight:700">' + fmtInt(it.net) + ' K</div>' +
         '<div class="b"><button class="btn-s" data-load="' + it.id + '">Ouvrir</button>' +
@@ -994,7 +1032,7 @@
     var name = snap.name.trim() || 'Sans nom';
     var entry = {
       id: iv.editing || Date.now(), name: name, prix: snap.prix, rows: snap.rows,
-      avant: snap.avant, apres: snap.apres, net: c.net, cout: c.cout, seuil: c.seuil,
+      avant: snap.avant, apres: snap.apres, net: c.net, cout: c.cout, seuil: c.seuil, icon: iv.icon,
       date: new Date().toISOString()
     };
     var idx = -1;
@@ -1018,7 +1056,7 @@
       var id = +t.dataset.load;
       ivSaved().forEach(function (it) {
         if (it.id === id) {
-          ivApply({ name: it.name, prix: it.prix, rows: it.rows, avant: it.avant, apres: it.apres, editing: it.id });
+          ivApply({ name: it.name, prix: it.prix, rows: it.rows, avant: it.avant, apres: it.apres, editing: it.id, icon: it.icon });
           setMsg(ivEl.saveMsg, '');
           window.scrollTo(0, 0);
         }
@@ -1054,13 +1092,13 @@
     sug.className = 'suggest open';
     sug.innerHTML = sugItems.map(function (it, i) {
       return '<div data-pick="' + i + '" class="' + (i === sugSel ? 'sel' : '') + '"><span>' +
-        esc(it.name) + '</span>' + (it.level ? '<small>Niv. ' + esc(it.level) + '</small>' : '') + '</div>';
+        imgTag(it.icon, 'si') + esc(it.name) + '</span>' + (it.level ? '<small>Niv. ' + esc(it.level) + '</small>' : '') + '</div>';
     }).join('');
   }
   function sugSearch(term) {
     var seq = ++sugSeq;
     var rx = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    var base = API + '/items?lang=fr&$limit=12&$select[]=id&$select[]=name&$select[]=level';
+    var base = API + '/items?lang=fr&$limit=12&$select[]=id&$select[]=name&$select[]=level&$select[]=iconId';
     // Plusieurs formulations tentées l'une après l'autre jusqu'à obtenir des résultats
     var tries = [
       base + '&name.fr[$regex]=' + encodeURIComponent(rx) + '&name.fr[$options]=i',
@@ -1070,7 +1108,7 @@
       if (k >= tries.length) return Promise.resolve([]);
       return getJson(tries[k]).then(function (r) {
         var list = (r && r.data ? r.data : (Array.isArray(r) ? r : []))
-          .map(function (o) { return { id: o.id, name: nameOf(o), level: o.level }; })
+          .map(function (o) { return { id: o.id, name: nameOf(o), level: o.level, icon: o.iconId }; })
           .filter(function (o) { return o.id && o.name; });
         return list.length ? list : attempt(k + 1);
       }).catch(function () { return attempt(k + 1); });
