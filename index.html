@@ -118,6 +118,50 @@
     cursor: pointer; margin-bottom: 12px; padding: 4px 0;
   }
   .drawer .close:hover { color: var(--text); }
+  .sub { font-size: 20px; margin: 8px 0 14px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+  .grid .card { min-width: 0; }
+  .ptable { overflow-x: auto; }
+  .ptable table { min-width: 460px; }
+  .ptable th small { display: block; color: var(--muted); font-weight: 400; }
+  .ptable td:first-child { white-space: nowrap; font-weight: 600; }
+  .ptable input {
+    width: 100%; min-width: 70px; background: var(--field); border: 0;
+    border-radius: 6px; color: var(--text); font: inherit; padding: 9px 8px; outline: 0;
+  }
+  .ptable input:focus { outline: 2px solid var(--accent); }
+  .check { display: flex; align-items: center; gap: 8px; margin-top: 14px; font-size: 14px; color: var(--muted); }
+  .card .sub-line { font-size: 14px; margin-top: 2px; }
+  .import-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .import-row input {
+    flex: 1; min-width: 200px; background: var(--field); border: 0; border-radius: 8px;
+    color: var(--text); font: inherit; padding: 11px 12px; outline: 0;
+  }
+  .import-row input:focus { outline: 2px solid var(--accent); }
+  .btn-s {
+    background: #234a63; color: var(--text); border: 0; border-radius: 8px;
+    padding: 10px 14px; font: inherit; font-weight: 600; cursor: pointer;
+  }
+  .btn-s:hover { background: #2b5a77; }
+  .btn-s:disabled { opacity: .5; cursor: default; }
+  .msg { font-size: 14px; min-height: 20px; margin: 6px 0 14px; color: var(--muted); }
+  .msg.err { color: var(--bad); }
+  .msg.ok { color: var(--good); }
+  .rtable { min-width: 520px; }
+  .rtable td, .rtable th { padding: 6px 4px; }
+  .rtable td:first-child { font-weight: 400; white-space: normal; }
+  .rtable .rt { text-align: right; white-space: nowrap; padding-right: 8px; }
+  .rtable .x { background: none; border: 0; color: var(--muted); cursor: pointer; font-size: 16px; padding: 4px 8px; }
+  .rtable .x:hover { color: var(--bad); }
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
+  .saved-item {
+    display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px 14px; margin-bottom: 8px;
+  }
+  .saved-item .n { font-weight: 600; }
+  .saved-item .s { font-size: 13px; color: var(--muted); }
+  .saved-item .b { display: flex; gap: 8px; }
   .more-list { display: grid; gap: 10px; }
   .more-list a {
     display: block; background: var(--panel); border: 1px solid var(--border);
@@ -148,7 +192,78 @@
 
   <section id="investissements">
     <h2>Investissements</h2>
-    <div class="soon">À venir.</div>
+
+    <div class="section-title">Importer une recette depuis DofusDB (optionnel)</div>
+    <div class="import-row">
+      <input id="ivUrl" type="text" placeholder="Lien DofusDB ou numéro de l'item (ex. 33607)">
+      <button class="btn-s" id="ivImport">Importer la recette</button>
+    </div>
+    <div class="msg" id="ivMsg"></div>
+
+    <label class="field">
+      <span>Nom de l'item</span>
+      <div class="input-wrap"><input id="ivName" type="text" placeholder="Nom de l'item"></div>
+    </label>
+
+    <label class="field">
+      <span>Prix de vente</span>
+      <div class="input-wrap">
+        <input id="ivPrix" type="number" inputmode="decimal" min="0" step="any">
+        <span class="unit">K</span>
+      </div>
+    </label>
+
+    <hr>
+
+    <div class="section-title">Recette : ressources nécessaires</div>
+    <div class="ptable">
+      <table class="rtable">
+        <thead>
+          <tr><th>Ressource</th><th>Quantité</th><th>Prix unitaire (K)</th><th class="rt">Total</th><th></th></tr>
+        </thead>
+        <tbody id="ivRows"></tbody>
+      </table>
+    </div>
+    <button class="btn-s" id="ivAdd" style="margin-top:10px">+ Ajouter une ressource</button>
+
+    <details id="ivForge">
+      <summary>🪄 Forgemagie (optionnel)</summary>
+      <label class="field" style="margin-top:12px">
+        <span>Valeur estimée du stock de runes avant</span>
+        <div class="input-wrap">
+          <input id="ivAvant" type="number" inputmode="decimal" step="any">
+          <span class="unit">K</span>
+        </div>
+      </label>
+      <label class="field">
+        <span>Valeur estimée du stock de runes après</span>
+        <div class="input-wrap">
+          <input id="ivApres" type="number" inputmode="decimal" step="any">
+          <span class="unit">K</span>
+        </div>
+      </label>
+    </details>
+
+    <hr style="margin-top:20px">
+
+    <div class="result">
+      <div class="card"><div class="k">Coût des ressources</div><div class="v" id="ivCout">–</div></div>
+      <div class="card" id="ivGainCard" style="display:none"><div class="k">Gain forgemagie</div><div class="v" id="ivGain">–</div></div>
+      <div class="card"><div class="k">Bénéfice net</div><div class="v" id="ivNet">–</div></div>
+      <div class="card"><div class="k">Seuil de rentabilité</div><div class="v" id="ivSeuil">–</div></div>
+    </div>
+    <p class="opt" style="margin-top:8px">
+      Le seuil de rentabilité est le prix de vente minimum (après taxe de 2 %) pour ne pas perdre d'argent avec les prix saisis.
+    </p>
+
+    <div class="actions">
+      <button class="btn-s" id="ivSave">💾 Enregistrer</button>
+      <button class="btn-s" id="ivClear">🗑 Vider le formulaire</button>
+    </div>
+    <div class="msg" id="ivSaveMsg"></div>
+
+    <div class="section-title" style="margin-top:26px">Mes crafts enregistrés</div>
+    <div id="ivList"></div>
   </section>
 
   <section id="calculateurs" class="active">
@@ -157,6 +272,8 @@
     <div class="pills" id="pills">
       <button data-calc="calc-runes" class="active">Runes</button>
       <button data-calc="calc-alliances">Alliances</button>
+      <button data-calc="calc-montures">Montures</button>
+      <button data-calc="calc-parchemins">Parchemins</button>
     </div>
 
     <div class="calc active" id="calc-runes">
@@ -290,6 +407,50 @@
       </div>
 
     </div><!-- /calc-alliances -->
+
+    <div class="calc" id="calc-montures">
+
+      <label class="field">
+        <span>Prix ressource</span>
+        <div class="input-wrap">
+          <input id="mPrix" type="number" inputmode="decimal" min="0" step="any" value="15000">
+          <span class="unit">K</span>
+        </div>
+      </label>
+
+      <h3 class="sub">Seuils de rentabilité</h3>
+      <div class="grid" id="mGrid"></div>
+
+    </div><!-- /calc-montures -->
+
+    <div class="calc" id="calc-parchemins">
+
+      <div class="section-title">Prix de vente</div>
+      <div class="ptable">
+        <table id="pTable"></table>
+      </div>
+
+      <label class="check">
+        <input type="checkbox" id="pNet" checked>
+        Déduire la taxe de mise en vente (2 %)
+      </label>
+
+      <div class="section-title" style="margin-top:22px">👑 Top rentabilité</div>
+      <div class="result" id="pTop"></div>
+
+      <div class="section-title" style="margin-top:22px">Par catégorie</div>
+      <div class="grid" id="pCats"></div>
+
+      <details>
+        <summary>Voir tous les scores</summary>
+        <div class="ptable"><table id="pScores"></table></div>
+      </details>
+
+      <p class="opt" style="margin-top:14px">
+        Score = prix de vente (après taxe) ÷ coût en avitons. Plus il est élevé, plus le parchemin est rentable.
+      </p>
+
+    </div><!-- /calc-parchemins -->
   </section>
 
   <section id="hdv">
@@ -480,6 +641,406 @@
   });
 
   computeAlliances();
+
+  // ---------- Calculateur de montures (seuils de rentabilité) ----------
+  var mPrix = document.getElementById('mPrix');
+  var mGrid = document.getElementById('mGrid');
+
+  function computeMontures() {
+    var prix = num(mPrix);
+    var html = '';
+    for (var gen = 2; gen <= 10; gen++) {
+      // Prix de vente minimal pour ne pas perdre d'argent après la taxe de 2 %,
+      // arrondi à la centaine inférieure (comme dans l'app Glide).
+      var seuil = Math.floor((prix * gen) / (1 - TAX) / 100) * 100;
+      html += '<div class="card"><div class="k">Gen ' + gen + '</div><div class="v">' +
+        fmtInt(seuil) + '</div></div>';
+    }
+    mGrid.innerHTML = html;
+    try { localStorage.setItem('ku_montures', mPrix.value); } catch (e) {}
+  }
+
+  try {
+    var sm = localStorage.getItem('ku_montures');
+    if (sm !== null) mPrix.value = sm;
+  } catch (e) {}
+  mPrix.addEventListener('input', computeMontures);
+  computeMontures();
+
+  // ---------- Calculateur de parchemins (scores de rentabilité) ----------
+  var P_ELEMS = [
+    { n: 'Vitalité', e: '⚪' }, { n: 'Sagesse', e: '🟣' }, { n: 'Intelligence', e: '🔴' },
+    { n: 'Agilité', e: '🟢' }, { n: 'Force', e: '🟤' }, { n: 'Chance', e: '🔵' }
+  ];
+  var P_SIZES = [
+    { n: 'Petit', e: '👏', c: 20 }, { n: 'Normal', e: '👌', c: 60 },
+    { n: 'Grand', e: '💪', c: 140 }, { n: 'Puissant', e: '🏋️', c: 340 }
+  ];
+
+  var pTable = document.getElementById('pTable');
+  var pScores = document.getElementById('pScores');
+  var pTop = document.getElementById('pTop');
+  var pCats = document.getElementById('pCats');
+  var pNet = document.getElementById('pNet');
+
+  // Construit le tableau de saisie (éléments en lignes, tailles en colonnes)
+  var head = '<thead><tr><th></th>';
+  P_SIZES.forEach(function (s) {
+    head += '<th>' + s.n + ' ' + s.e + '<small>' + s.c + ' avitons</small></th>';
+  });
+  head += '</tr></thead>';
+  var body = '<tbody>';
+  P_ELEMS.forEach(function (el_, i) {
+    body += '<tr><td>' + el_.n + ' ' + el_.e + '</td>';
+    P_SIZES.forEach(function (s, j) {
+      body += '<td><input type="number" inputmode="decimal" min="0" step="any" ' +
+        'placeholder="—" data-e="' + i + '" data-s="' + j + '"></td>';
+    });
+    body += '</tr>';
+  });
+  body += '</tbody>';
+  pTable.innerHTML = head + body;
+  var pInputs = pTable.querySelectorAll('input');
+
+  function priceOf(input) {
+    if (input.value === '') return null;
+    var v = parseFloat(String(input.value).replace(',', '.'));
+    return isFinite(v) && v > 0 ? v : null;
+  }
+
+  function computeParchemins() {
+    var factor = pNet.checked ? 1 - TAX : 1;
+    var scores = P_ELEMS.map(function () { return P_SIZES.map(function () { return null; }); });
+    var saved = [];
+
+    pInputs.forEach(function (inp) {
+      var e = +inp.dataset.e, s = +inp.dataset.s;
+      var p = priceOf(inp);
+      if (p !== null) scores[e][s] = p * factor / P_SIZES[s].c;
+      saved.push(inp.value);
+    });
+
+    // Meilleur score global
+    var best = null;
+    scores.forEach(function (row, e) {
+      row.forEach(function (sc, s) {
+        if (sc !== null && (best === null || sc > best.sc)) best = { sc: sc, e: e, s: s };
+      });
+    });
+    pTop.innerHTML = best
+      ? '<div class="card"><div class="v">' + fmtInt(best.sc) + '</div></div>' +
+        '<div class="card"><div class="k">' + P_SIZES[best.s].n + ' ' + P_SIZES[best.s].e + '</div>' +
+        '<div class="v" style="font-size:20px">' + P_ELEMS[best.e].n + ' ' + P_ELEMS[best.e].e + '</div></div>'
+      : '<div class="card"><div class="k">Saisis au moins un prix</div><div class="v">–</div></div>';
+
+    // Meilleur élément pour chaque taille
+    var bestPerSize = [];
+    var cats = '';
+    P_SIZES.forEach(function (sz, s) {
+      var b = null;
+      P_ELEMS.forEach(function (_, e) {
+        var sc = scores[e][s];
+        if (sc !== null && (b === null || sc > b.sc)) b = { sc: sc, e: e };
+      });
+      bestPerSize.push(b);
+      cats += '<div class="card"><div class="k">' + sz.n + ' ' + sz.e + '</div>' +
+        '<div class="v">' + (b ? fmtInt(b.sc) : '–') + '</div>' +
+        '<div class="sub-line">' + (b ? P_ELEMS[b.e].n + ' ' + P_ELEMS[b.e].e : '') + '</div></div>';
+    });
+    pCats.innerHTML = cats;
+
+    // Tableau détaillé de tous les scores (meilleur de chaque colonne en vert)
+    var t = '<thead><tr><th></th>';
+    P_SIZES.forEach(function (s) { t += '<th>' + s.n + ' ' + s.e + '</th>'; });
+    t += '</tr></thead><tbody>';
+    P_ELEMS.forEach(function (el_, e) {
+      t += '<tr><td>' + el_.n + ' ' + el_.e + '</td>';
+      P_SIZES.forEach(function (_, s) {
+        var sc = scores[e][s];
+        var isBest = bestPerSize[s] && bestPerSize[s].e === e && sc !== null;
+        t += '<td class="' + (isBest ? 'pos' : '') + '">' + (sc === null ? '–' : fmtInt(sc)) + '</td>';
+      });
+      t += '</tr>';
+    });
+    pScores.innerHTML = t + '</tbody>';
+
+    try {
+      localStorage.setItem('ku_parchemins', JSON.stringify({ prices: saved, net: pNet.checked }));
+    } catch (e) {}
+  }
+
+  try {
+    var sp = JSON.parse(localStorage.getItem('ku_parchemins') || 'null');
+    if (sp) {
+      pInputs.forEach(function (inp, i) { if (sp.prices && sp.prices[i] !== undefined) inp.value = sp.prices[i]; });
+      pNet.checked = sp.net !== false;
+    }
+  } catch (e) {}
+  pInputs.forEach(function (inp) { inp.addEventListener('input', computeParchemins); });
+  pNet.addEventListener('change', computeParchemins);
+  computeParchemins();
+
+  // ---------- Investissements (rentabilité d'un craft) ----------
+  var API = 'https://api.dofusdb.fr';
+  var iv = { rows: [], editing: null };
+  var ivEl = {
+    url: document.getElementById('ivUrl'), importBtn: document.getElementById('ivImport'),
+    msg: document.getElementById('ivMsg'), saveMsg: document.getElementById('ivSaveMsg'),
+    name: document.getElementById('ivName'), prix: document.getElementById('ivPrix'),
+    tbody: document.getElementById('ivRows'), add: document.getElementById('ivAdd'),
+    forge: document.getElementById('ivForge'),
+    avant: document.getElementById('ivAvant'), apres: document.getElementById('ivApres'),
+    cout: document.getElementById('ivCout'), gainCard: document.getElementById('ivGainCard'),
+    gain: document.getElementById('ivGain'), net: document.getElementById('ivNet'),
+    seuil: document.getElementById('ivSeuil'),
+    save: document.getElementById('ivSave'), clear: document.getElementById('ivClear'),
+    list: document.getElementById('ivList')
+  };
+
+  function esc(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  function nv(s) {
+    var v = parseFloat(String(s).replace(',', '.'));
+    return isFinite(v) ? v : 0;
+  }
+  function blankRows(n) {
+    var r = [];
+    for (var i = 0; i < n; i++) r.push({ name: '', qty: '', price: '' });
+    return r;
+  }
+  function setMsg(node, text, cls) {
+    node.textContent = text || '';
+    node.className = 'msg' + (cls ? ' ' + cls : '');
+  }
+
+  function ivRenderRows() {
+    var h = '';
+    iv.rows.forEach(function (r, i) {
+      h += '<tr>' +
+        '<td><input type="text" data-i="' + i + '" data-f="name" placeholder="Ressource" value="' + esc(r.name) + '" style="min-width:150px"></td>' +
+        '<td><input type="number" inputmode="decimal" min="0" step="any" data-i="' + i + '" data-f="qty" placeholder="0" value="' + esc(r.qty) + '" style="min-width:64px"></td>' +
+        '<td><input type="number" inputmode="decimal" min="0" step="any" data-i="' + i + '" data-f="price" placeholder="0" value="' + esc(r.price) + '"></td>' +
+        '<td class="rt" id="ivSub' + i + '">–</td>' +
+        '<td><button class="x" data-del="' + i + '" title="Retirer cette ressource">✕</button></td>' +
+        '</tr>';
+    });
+    ivEl.tbody.innerHTML = h;
+  }
+
+  function ivCalc() {
+    var cout = 0, subs = [];
+    iv.rows.forEach(function (r) {
+      var s = nv(r.qty) * nv(r.price);
+      subs.push(s);
+      cout += s;
+    });
+    var forgeUsed = ivEl.avant.value !== '' || ivEl.apres.value !== '';
+    var gain = forgeUsed ? nv(ivEl.apres.value) - nv(ivEl.avant.value) : 0;
+    var net = nv(ivEl.prix.value) * (1 - TAX) - cout + gain;
+    var seuil = cout > 0 ? Math.ceil(Math.max(cout - gain, 0) / (1 - TAX)) : null;
+    return { cout: cout, subs: subs, forgeUsed: forgeUsed, gain: gain, net: net, seuil: seuil };
+  }
+
+  function ivCompute() {
+    var c = ivCalc();
+    c.subs.forEach(function (s, i) {
+      var cell = document.getElementById('ivSub' + i);
+      if (cell) cell.textContent = s ? fmtInt(s) : '–';
+    });
+    ivEl.cout.textContent = fmtInt(c.cout) + ' K';
+    ivEl.gainCard.style.display = c.forgeUsed ? '' : 'none';
+    setSigned(ivEl.gain, (c.gain > 0 ? '+' : '') + fmtInt(c.gain) + ' K', c.gain);
+    setSigned(ivEl.net, fmtInt(c.net) + ' K', c.net);
+    ivEl.seuil.textContent = c.seuil === null ? '–' : fmtInt(c.seuil) + ' K';
+    try { localStorage.setItem('ku_iv_draft', JSON.stringify(ivSnapshot())); } catch (e) {}
+  }
+
+  function ivSnapshot() {
+    return {
+      name: ivEl.name.value, prix: ivEl.prix.value, rows: iv.rows,
+      avant: ivEl.avant.value, apres: ivEl.apres.value, editing: iv.editing
+    };
+  }
+  function ivApply(d) {
+    ivEl.name.value = d.name || '';
+    ivEl.prix.value = d.prix || '';
+    iv.rows = (d.rows && d.rows.length) ? d.rows.map(function (r) {
+      return { name: r.name || '', qty: r.qty, price: r.price };
+    }) : blankRows(4);
+    ivEl.avant.value = d.avant || '';
+    ivEl.apres.value = d.apres || '';
+    ivEl.forge.open = !!(d.avant || d.apres);
+    iv.editing = d.editing || null;
+    ivRenderRows();
+    ivCompute();
+  }
+
+  // Saisie dans le tableau des ressources
+  ivEl.tbody.addEventListener('input', function (e) {
+    var t = e.target;
+    if (t.dataset && t.dataset.f) {
+      iv.rows[+t.dataset.i][t.dataset.f] = t.value;
+      ivCompute();
+    }
+  });
+  ivEl.tbody.addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('[data-del]') : null;
+    if (!b) return;
+    iv.rows.splice(+b.dataset.del, 1);
+    if (!iv.rows.length) iv.rows = blankRows(1);
+    ivRenderRows();
+    ivCompute();
+  });
+  ivEl.add.addEventListener('click', function () {
+    iv.rows.push({ name: '', qty: '', price: '' });
+    ivRenderRows();
+    ivCompute();
+  });
+  [ivEl.name, ivEl.prix, ivEl.avant, ivEl.apres].forEach(function (i) {
+    i.addEventListener('input', ivCompute);
+  });
+
+  // ----- Import depuis DofusDB -----
+  function getJson(url) {
+    return fetch(url).then(function (r) {
+      if (!r.ok) throw new Error('erreur ' + r.status);
+      return r.json();
+    });
+  }
+  function firstOf(x) {
+    if (x && x.data) x = x.data;
+    return Array.isArray(x) ? x[0] : x;
+  }
+  function nameOf(o) {
+    if (!o) return '';
+    var n = o.name;
+    if (n && typeof n === 'object') n = n.fr || n.en || '';
+    return n || '';
+  }
+  function itemName(id) {
+    return getJson(API + '/items/' + id + '?lang=fr').then(nameOf).then(function (n) {
+      if (n) return n;
+      throw new Error('nom introuvable');
+    }).catch(function () {
+      return getJson(API + '/items?id=' + id + '&lang=fr&$limit=1').then(function (r) {
+        return nameOf(firstOf(r)) || ('Ressource n°' + id);
+      });
+    }).catch(function () { return 'Ressource n°' + id; });
+  }
+
+  function ivImport() {
+    var m = String(ivEl.url.value).match(/(\d+)(?!.*\d)/);
+    if (!m) { setMsg(ivEl.msg, 'Colle un lien DofusDB (ex. …/item/33607) ou un numéro d\'item.', 'err'); return; }
+    var id = m[1];
+    ivEl.importBtn.disabled = true;
+    setMsg(ivEl.msg, 'Import en cours…');
+
+    getJson(API + '/recipes/' + id)
+      .catch(function () { return getJson(API + '/recipes?resultId=' + id); })
+      .then(function (r) {
+        var rec = firstOf(r);
+        if (!rec || !rec.ingredientIds || !rec.ingredientIds.length) {
+          throw new Error('aucune recette trouvée pour cet item');
+        }
+        var ids = [id].concat(rec.ingredientIds);
+        return Promise.all(ids.map(itemName)).then(function (names) {
+          return { rec: rec, names: names };
+        });
+      })
+      .then(function (res) {
+        iv.rows = res.rec.ingredientIds.map(function (_, k) {
+          return { name: res.names[k + 1], qty: res.rec.quantities ? res.rec.quantities[k] : '', price: '' };
+        });
+        if (res.names[0] && !res.names[0].indexOf('Ressource n°')) { /* nom indisponible : on garde la saisie */ }
+        else ivEl.name.value = res.names[0];
+        iv.editing = null;
+        ivRenderRows();
+        ivCompute();
+        setMsg(ivEl.msg, 'Recette importée (' + iv.rows.length + ' ressources). Il te reste à saisir les prix.', 'ok');
+      })
+      .catch(function (err) {
+        setMsg(ivEl.msg, 'Import impossible (' + err.message + '). Tu peux saisir la recette à la main.', 'err');
+      })
+      .then(function () { ivEl.importBtn.disabled = false; });
+  }
+  ivEl.importBtn.addEventListener('click', ivImport);
+  ivEl.url.addEventListener('keydown', function (e) { if (e.key === 'Enter') ivImport(); });
+
+  // ----- Crafts enregistrés -----
+  function ivSaved() {
+    try { return JSON.parse(localStorage.getItem('ku_invest') || '[]'); } catch (e) { return []; }
+  }
+  function ivStore(a) {
+    try { localStorage.setItem('ku_invest', JSON.stringify(a)); } catch (e) {}
+  }
+  function ivRenderList() {
+    var a = ivSaved();
+    if (!a.length) {
+      ivEl.list.innerHTML = '<div class="soon">Aucun craft enregistré pour le moment.</div>';
+      return;
+    }
+    ivEl.list.innerHTML = a.map(function (it) {
+      return '<div class="saved-item"><div><div class="n">' + esc(it.name) + '</div>' +
+        '<div class="s">Seuil : ' + (it.seuil === null ? '–' : fmtInt(it.seuil) + ' K') + '</div></div>' +
+        '<div class="v ' + (it.net >= 0 ? 'pos' : 'neg') + '" style="font-size:18px;font-weight:700">' + fmtInt(it.net) + ' K</div>' +
+        '<div class="b"><button class="btn-s" data-load="' + it.id + '">Ouvrir</button>' +
+        '<button class="btn-s" data-rm="' + it.id + '">Supprimer</button></div></div>';
+    }).join('');
+  }
+  ivEl.save.addEventListener('click', function () {
+    var c = ivCalc();
+    var snap = ivSnapshot();
+    var a = ivSaved();
+    var name = snap.name.trim() || 'Sans nom';
+    var entry = {
+      id: iv.editing || Date.now(), name: name, prix: snap.prix, rows: snap.rows,
+      avant: snap.avant, apres: snap.apres, net: c.net, cout: c.cout, seuil: c.seuil,
+      date: new Date().toISOString()
+    };
+    var idx = -1;
+    a.forEach(function (it, i) { if (it.id === entry.id) idx = i; });
+    if (idx >= 0) a[idx] = entry; else a.unshift(entry);
+    iv.editing = entry.id;
+    ivStore(a);
+    ivRenderList();
+    ivCompute();
+    setMsg(ivEl.saveMsg, 'Enregistré : ' + name, 'ok');
+  });
+  ivEl.clear.addEventListener('click', function () {
+    ivApply({});
+    ivEl.url.value = '';
+    setMsg(ivEl.msg, '');
+    setMsg(ivEl.saveMsg, '');
+  });
+  ivEl.list.addEventListener('click', function (e) {
+    var t = e.target;
+    if (!t.dataset) return;
+    if (t.dataset.load) {
+      var id = +t.dataset.load;
+      ivSaved().forEach(function (it) {
+        if (it.id === id) {
+          ivApply({ name: it.name, prix: it.prix, rows: it.rows, avant: it.avant, apres: it.apres, editing: it.id });
+          setMsg(ivEl.saveMsg, '');
+          window.scrollTo(0, 0);
+        }
+      });
+    } else if (t.dataset.rm) {
+      if (!window.confirm('Supprimer ce craft enregistré ?')) return;
+      var rid = +t.dataset.rm;
+      ivStore(ivSaved().filter(function (it) { return it.id !== rid; }));
+      if (iv.editing === rid) iv.editing = null;
+      ivRenderList();
+    }
+  });
+
+  // Restaure le brouillon en cours
+  try {
+    var draft = JSON.parse(localStorage.getItem('ku_iv_draft') || 'null');
+    ivApply(draft || {});
+  } catch (e) { ivApply({}); }
+  ivRenderList();
 </script>
 </body>
 </html>
