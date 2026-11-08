@@ -214,6 +214,23 @@
   .hdv-prev:empty { display: none; }
   .hdv-meta { font-size: 13px; color: var(--muted); margin-top: 10px; line-height: 1.6; }
   .hdv-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+  .alm-today { display: flex; align-items: center; gap: 16px; background: #232323; border: 1px solid var(--accent); border-radius: 12px; padding: 16px; }
+  .alm-big { width: 72px; height: 72px; object-fit: contain; flex: none; background: var(--field); border-radius: 12px; padding: 6px; }
+  .alm-tx { min-width: 0; }
+  .alm-tx .k { font-size: 13px; color: var(--muted); }
+  .alm-tx .k::first-letter { text-transform: uppercase; }
+  .alm-item { font-size: 20px; font-weight: 700; margin: 2px 0 6px; }
+  .alm-item b, .alm-rn b { color: var(--accent); }
+  .alm-bonus { font-size: 14px; color: var(--muted); line-height: 1.45; }
+  .alm-bonus b { color: var(--text); }
+  .alm-row { display: flex; align-items: center; gap: 12px; background: #232323; border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
+  .alm-ico { width: 36px; height: 36px; object-fit: contain; flex: none; }
+  .alm-main { flex: 1; min-width: 0; }
+  .alm-rd { font-size: 13px; color: var(--muted); }
+  .alm-rd::first-letter { text-transform: uppercase; }
+  .alm-rn { font-weight: 600; }
+  .alm-rb { font-size: 12px; color: var(--muted); text-align: right; max-width: 38%; }
+  #almBox a { color: var(--accent); }
   .expl { margin: 0 0 12px; line-height: 1.55; }
   .expl.warn { color: #e0b45a; }
   .expl-list { margin: 0; padding-left: 20px; line-height: 1.6; color: var(--muted); }
@@ -268,10 +285,18 @@
       </div>
       <div class="result">
         <div class="card"><div class="k">Objets vendus</div><div class="v" id="dSoldCount">–</div></div>
-        <div class="card"><div class="k">Kamas encaissés</div><div class="v" id="dSoldCash">–</div></div>
         <div class="card"><div class="k">Bénéfices réalisés</div><div class="v" id="dSoldProfit">–</div></div>
       </div>
       <p class="opt" style="margin:10px 0 0" id="dPeriodCap"></p>
+    </div>
+
+    <div class="iv-sec" id="almBox">
+      <div class="section-title">Almanax</div>
+      <div id="almToday"></div>
+      <div class="section-title" style="margin-top:22px">Les prochains jours</div>
+      <div id="almList"></div>
+      <button class="btn-s alt" id="almMore" style="display:none;margin-top:10px">Voir les jours suivants</button>
+      <p class="opt" style="margin:16px 0 0">Offrande à apporter au PNJ et bonus du jour. Données : <a href="https://www.dofusdu.de/" target="_blank" rel="noopener">Dofusdude</a> · <a href="https://www.krosmoz.com/fr/almanax" target="_blank" rel="noopener">Almanax officiel</a></p>
     </div>
   </section>
 
@@ -1670,10 +1695,9 @@
 
     var r = periodRange();
     var sold = all.filter(function (e) { return isSold(e) && e.it.soldAt >= r.start && e.it.soldAt < r.end; });
-    var cashIn = 0, profit = 0;
-    sold.forEach(function (e) { cashIn += (+e.it.soldPrice || 0) * (1 - TAX); profit += +e.it.soldNet || 0; });
+    var profit = 0;
+    sold.forEach(function (e) { profit += +e.it.soldNet || 0; });
     document.getElementById('dSoldCount').textContent = fmtInt(sold.length);
-    document.getElementById('dSoldCash').textContent = fmtInt(cashIn) + ' K';
     setSigned(document.getElementById('dSoldProfit'), fmtInt(profit) + ' K', profit);
     document.getElementById('dPeriodCap').textContent = r.cap;
     periodBtns.forEach(function (b) { b.classList.toggle('active', b.dataset.period === period); });
@@ -1684,9 +1708,119 @@
   function refreshViews() {
     hdvRender();
     dashRender();
+    almRender();
     backupRender();
   }
 
+
+  // ---------- Almanax (données : API Dofusdude) ----------
+  var ALM_URL = 'https://alm.dofusdu.de/dofus/v1/fr/ahead/14';
+  var alm = { status: 'idle', list: [], error: '', all: false };
+  var almEl = {
+    today: document.getElementById('almToday'), list: document.getElementById('almList'),
+    more: document.getElementById('almMore'), retry: null
+  };
+
+  function ymdOf(d) {
+    var p = function (n) { return (n < 10 ? '0' : '') + n; };
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+  }
+  function ymdToTs(s) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(s || ''));
+    return m ? new Date(+m[1], +m[2] - 1, +m[3]).getTime() : NaN;
+  }
+  function safeUrl(u) { return typeof u === 'string' && /^https:\/\//i.test(u) ? u : ''; }
+
+  // L'API peut présenter ses champs de plusieurs façons : on lit ce qu'on trouve, sans rien supposer
+  function almNorm(o) {
+    if (!o || typeof o !== 'object') return null;
+    var bonus = o.bonus || {};
+    var btype = bonus.type && typeof bonus.type === 'object' ? (bonus.type.name || bonus.type.id || '') : (bonus.type || '');
+    var tr = o.tribute || o.offering || {};
+    var item = tr.item || o.item || {};
+    var imgs = item.image_urls || item.images || {};
+    var img = typeof imgs === 'string' ? imgs : (imgs.icon || imgs.sd || imgs.hq || imgs.hd || item.image_url || item.img || '');
+    var q = tr.quantity != null ? tr.quantity : o.quantity;
+    var r = {
+      date: String(o.date || ''), btype: String(btype || ''), bdesc: String(bonus.description || bonus.text || ''),
+      iname: String(item.name || item.title || ''), qty: isFinite(+q) ? +q : null, img: safeUrl(img)
+    };
+    return isNaN(ymdToTs(r.date)) ? null : r;
+  }
+  function almParse(r) {
+    var arr = Array.isArray(r) ? r : (r && Array.isArray(r.data) ? r.data : (r && Array.isArray(r.days) ? r.days : (r && r.date ? [r] : [])));
+    return arr.map(almNorm).filter(Boolean).sort(function (a, b) { return ymdToTs(a.date) - ymdToTs(b.date); });
+  }
+
+  function almLoad(force) {
+    var today = ymdOf(new Date());
+    if (!force) {
+      try {
+        var c = JSON.parse(localStorage.getItem('kc_alm') || 'null');
+        if (c && c.day === today && Array.isArray(c.list) && c.list.length) {
+          alm.list = c.list; alm.status = 'ok'; almRender(); return;
+        }
+      } catch (e) {}
+    }
+    alm.status = 'loading';
+    almRender();
+    getJson(ALM_URL).then(function (r) {
+      var list = almParse(r);
+      if (!list.length) throw new Error('réponse inattendue');
+      alm.list = list; alm.status = 'ok';
+      try { localStorage.setItem('kc_alm', JSON.stringify({ day: today, list: list })); } catch (e) {}
+      almRender();
+    }).catch(function (err) {
+      alm.status = 'error';
+      alm.error = err && err.message && err.message !== 'Failed to fetch' ? err.message : 'connexion impossible';
+      almRender();
+    });
+  }
+
+  function almImg(url, cls) {
+    return url ? '<img class="' + cls + '" src="' + esc(url) + '" alt="" loading="lazy" onerror="this.style.display=\'none\'">' : '';
+  }
+  function almDateFr(s, opts) { return new Date(ymdToTs(s)).toLocaleDateString('fr-FR', opts); }
+
+  function almRender() {
+    if (alm.status === 'loading' || alm.status === 'idle') {
+      almEl.today.innerHTML = '<div class="soon">Chargement de l\'Almanax…</div>';
+      almEl.list.innerHTML = ''; almEl.more.style.display = 'none';
+      return;
+    }
+    if (alm.status === 'error') {
+      almEl.today.innerHTML = '<div class="soon">Almanax indisponible pour le moment (' + esc(alm.error) + ').<br>' +
+        '<button class="btn-s" id="almRetry" style="margin-top:12px">Réessayer</button></div>';
+      almEl.list.innerHTML = ''; almEl.more.style.display = 'none';
+      document.getElementById('almRetry').addEventListener('click', function () { almLoad(true); });
+      return;
+    }
+    var todayTs = ymdToTs(ymdOf(new Date()));
+    var upcoming = alm.list.filter(function (x) { return ymdToTs(x.date) >= todayTs; });
+    if (!upcoming.length) upcoming = alm.list.slice(-1);
+    var first = upcoming[0];
+    var isToday = ymdToTs(first.date) === todayTs;
+    var long = { weekday: 'long', day: 'numeric', month: 'long' };
+
+    almEl.today.innerHTML = '<div class="alm-today">' + almImg(first.img, 'alm-big') + '<div class="alm-tx">' +
+      '<div class="k">' + (isToday ? 'Almanax du jour' : 'Prochain Almanax') + ' · ' + esc(almDateFr(first.date, long)) + '</div>' +
+      '<div class="alm-item">' + esc(first.iname || '—') + (first.qty != null ? ' <b>× ' + fmtInt(first.qty) + '</b>' : '') + '</div>' +
+      (first.btype || first.bdesc ? '<div class="alm-bonus">' + (first.btype ? '<b>' + esc(first.btype) + '</b>' : '') +
+        (first.btype && first.bdesc ? ' : ' : '') + esc(first.bdesc) + '</div>' : '') + '</div></div>';
+
+    var rest = upcoming.slice(1);
+    var shown = alm.all ? rest : rest.slice(0, 7);
+    almEl.list.innerHTML = shown.map(function (x) {
+      var n = Math.round((ymdToTs(x.date) - todayTs) / 86400000);
+      var when = n === 1 ? 'demain' : (n > 1 ? 'dans ' + n + ' jours' : '');
+      return '<div class="alm-row">' + almImg(x.img, 'alm-ico') + '<div class="alm-main">' +
+        '<div class="alm-rd">' + esc(almDateFr(x.date, { weekday: 'short', day: 'numeric', month: 'short' })) + (when ? ' · ' + when : '') + '</div>' +
+        '<div class="alm-rn">' + esc(x.iname || '—') + (x.qty != null ? ' <b>× ' + fmtInt(x.qty) + '</b>' : '') + '</div></div>' +
+        (x.btype ? '<div class="alm-rb">' + esc(x.btype) + '</div>' : '') + '</div>';
+    }).join('');
+    almEl.more.style.display = rest.length > 7 && !alm.all ? '' : 'none';
+  }
+  almEl.more.addEventListener('click', function () { alm.all = true; almRender(); });
 
   // ---------- Sauvegarde : export / import de toutes les données du site ----------
   var BK_PREFIX = 'ku_';
@@ -1839,6 +1973,7 @@
 
   kuReady = true;
   refreshViews();
+  almLoad(false);
 </script>
 </body>
 </html>
