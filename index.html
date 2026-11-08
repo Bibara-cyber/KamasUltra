@@ -1714,7 +1714,8 @@
 
 
   // ---------- Almanax (données : API Dofusdude) ----------
-  var ALM_URL = 'https://alm.dofusdu.de/dofus/v1/fr/ahead/14';
+  var ALM_BASE = 'https://alm.dofusdu.de/dofus/v1/fr/';
+  var ALM_DAYS = 14;
   var alm = { status: 'idle', list: [], error: '', all: false };
   var almEl = {
     today: document.getElementById('almToday'), list: document.getElementById('almList'),
@@ -1752,6 +1753,29 @@
     return arr.map(almNorm).filter(Boolean).sort(function (a, b) { return ymdToTs(a.date) - ymdToTs(b.date); });
   }
 
+  // 1) une seule demande « ahead » ; 2) si elle échoue, une demande par jour (chemin /fr/AAAA-MM-JJ)
+  function almFetchList() {
+    return getJson(ALM_BASE + 'ahead/' + ALM_DAYS).then(almParse).then(function (list) {
+      if (!list.length) throw new Error('réponse inattendue');
+      return list;
+    }).catch(function (firstErr) {
+      var now = new Date(), reqs = [];
+      for (var i = 0; i < ALM_DAYS; i++) {
+        (function (day) {
+          reqs.push(getJson(ALM_BASE + day).then(function (o) {
+            if (o && typeof o === 'object' && !Array.isArray(o) && !o.date && !o.error) o.date = day;
+            return o && !o.error ? o : null;
+          }).catch(function () { return null; }));
+        })(ymdOf(new Date(now.getFullYear(), now.getMonth(), now.getDate() + i)));
+      }
+      return Promise.all(reqs).then(function (arr) {
+        var list = almParse(arr.filter(Boolean));
+        if (!list.length) throw firstErr;
+        return list;
+      });
+    });
+  }
+
   function almLoad(force) {
     var today = ymdOf(new Date());
     if (!force) {
@@ -1764,9 +1788,7 @@
     }
     alm.status = 'loading';
     almRender();
-    getJson(ALM_URL).then(function (r) {
-      var list = almParse(r);
-      if (!list.length) throw new Error('réponse inattendue');
+    almFetchList().then(function (list) {
       alm.list = list; alm.status = 'ok';
       try { localStorage.setItem('kc_alm', JSON.stringify({ day: today, list: list })); } catch (e) {}
       almRender();
