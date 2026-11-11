@@ -238,6 +238,22 @@
   .bk-sum { font-size: 14px; color: var(--muted); margin-bottom: 14px; }
   .bk-btn { margin: 0; max-width: none; }
   .btn-s.alt { background: var(--field); }
+  .at-add { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; margin-top: 14px; }
+  .at-add .field { flex: 0 0 150px; }
+  .at-item, .at-row { display: flex; align-items: center; gap: 10px; background: #232323; border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
+  .at-item img, .at-row img { width: 36px; height: 36px; object-fit: contain; flex: none; }
+  .at-name { flex: 1; min-width: 0; font-weight: 600; word-break: break-word; }
+  .at-name small { display: block; font-weight: 400; color: var(--muted); }
+  .at-step { display: flex; align-items: center; gap: 6px; flex: none; }
+  .at-step button { width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border); background: var(--field); color: var(--text); font-size: 18px; cursor: pointer; }
+  .at-step input { width: 52px; text-align: center; min-width: 0; }
+  .at-x { background: none; border: 0; color: var(--muted); font-size: 18px; cursor: pointer; padding: 4px 6px; }
+  .at-row input[type=checkbox] { width: 22px; height: 22px; flex: none; accent-color: var(--accent); }
+  .at-row.done .at-name { text-decoration: line-through; opacity: .5; }
+  .at-q { flex: none; font-weight: 700; }
+  .at-cost { flex: none; text-align: right; line-height: 1.25; }
+  .at-cost small { display: block; font-size: 11px; color: var(--muted); }
+  .at-tot { display: flex; justify-content: space-between; padding: 10px 4px 0; font-weight: 600; flex-wrap: wrap; gap: 6px; }
   .btn-s.alt:hover { background: #3a3a3a; }
 </style>
 </head>
@@ -248,6 +264,7 @@
   <nav id="nav">
     <button data-tab="dashboard" class="active">Dashboard 🚀</button>
     <button data-tab="investissements">Investissements 🪙</button>
+    <button data-tab="atelier">Atelier 🛠️</button>
     <button data-tab="calculateurs">Calculateurs 🧮</button>
     <button data-tab="hdv">Hôtel de vente 🏷️</button>
     <button data-tab="sauvegarde">Sauvegarde 💾</button>
@@ -377,6 +394,13 @@
         <button class="btn-s" id="ivSave">💾 Enregistrer</button>
         <button class="btn-s" id="ivClear">🗑 Vider le formulaire</button>
       </div>
+      <div class="at-add">
+        <label class="field" style="margin:0">
+          <span>Nombre à fabriquer</span>
+          <div class="input-wrap"><input id="ivAtQty" type="text" inputmode="numeric" value="1" style="min-width:60px"></div>
+        </label>
+        <button class="btn-s alt" id="ivAtAdd">🛠️ Ajouter à l'Atelier</button>
+      </div>
       <div class="msg" id="ivSaveMsg" style="margin-bottom:0"></div>
     </div>
 
@@ -428,6 +452,25 @@
       </div>
 
     </div><!-- /iv-flip -->
+  </section>
+
+  <section id="atelier">
+    <h2>Atelier 🛠️</h2>
+    <div class="iv-sec">
+      <div class="section-title">Objets à fabriquer</div>
+      <div id="atItems"></div>
+      <p class="opt" style="margin:10px 0 0">Ajoute des objets depuis Investissements → Craft (bouton « Ajouter à l'Atelier »).</p>
+    </div>
+    <div class="iv-sec" id="atShopSec">
+      <div class="section-title">🛒 Liste de courses</div>
+      <div id="atShop"></div>
+      <div class="actions">
+        <button class="btn-s" id="atCopy">📋 Copier la liste</button>
+        <button class="btn-s alt" id="atUncheck">Décocher tout</button>
+        <button class="btn-s alt" id="atClear">🗑 Vider l'Atelier</button>
+      </div>
+      <div class="msg" id="atMsg" style="margin-bottom:0"></div>
+    </div>
   </section>
 
   <section id="calculateurs">
@@ -1709,6 +1752,7 @@
     hdvRender();
     dashRender();
     almRender();
+    atRender();
     backupRender();
   }
 
@@ -1859,6 +1903,134 @@
   }
   almEl.more.addEventListener('click', function () { alm.shown += 30; almRender(); });
 
+
+  // ---------- Atelier : plusieurs objets à fabriquer + liste de courses ----------
+  var atEl = {
+    items: document.getElementById('atItems'), shop: document.getElementById('atShop'),
+    msg: document.getElementById('atMsg'), sec: document.getElementById('atShopSec')
+  };
+  function atSaved() {
+    try { var a = JSON.parse(localStorage.getItem('ku_atelier') || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; }
+  }
+  function atStore(a) { try { localStorage.setItem('ku_atelier', JSON.stringify(a)); } catch (e) {} }
+  function atDone() {
+    try { var d = JSON.parse(localStorage.getItem('ku_atelier_done') || '{}'); return d && typeof d === 'object' && !Array.isArray(d) ? d : {}; } catch (e) { return {}; }
+  }
+  function atDoneStore(d) { try { localStorage.setItem('ku_atelier_done', JSON.stringify(d)); } catch (e) {} }
+  function atKey(n) { return String(n).trim().toLowerCase(); }
+  function atQty(v) { var n = Math.floor(nv(v)); return n < 1 ? 1 : (n > 9999 ? 9999 : n); }
+
+  // Totaux par ressource, tous objets confondus
+  function atTotals() {
+    var map = {}, order = [];
+    atSaved().forEach(function (it) {
+      var n = atQty(it.qty);
+      (it.rows || []).forEach(function (r) {
+        var name = String(r.name || '').trim(), q = nv(r.qty);
+        if (!name || q <= 0) return;
+        var k = atKey(name);
+        if (!map[k]) { map[k] = { key: k, name: name, icon: r.icon || null, qty: 0, price: 0 }; order.push(k); }
+        map[k].qty += q * n;
+        if (!map[k].icon && r.icon) map[k].icon = r.icon;
+        if (nv(r.price) > 0) map[k].price = nv(r.price);
+      });
+    });
+    return order.map(function (k) { return map[k]; });
+  }
+
+  function atRender() {
+    var items = atSaved();
+    if (!items.length) {
+      atEl.items.innerHTML = '<div class="soon">Aucun objet pour le moment.</div>';
+      atEl.sec.style.display = 'none';
+      return;
+    }
+    atEl.sec.style.display = '';
+    atEl.items.innerHTML = items.map(function (it) {
+      var rows = (it.rows || []).filter(function (r) { return r && r.name && nv(r.qty) > 0; }).length;
+      var unit = 0;
+      (it.rows || []).forEach(function (r) { unit += nv(r.qty) * nv(r.price); });
+      var n = atQty(it.qty);
+      return '<div class="at-item" data-id="' + esc(it.id) + '">' + imgTag(it.icon, '') +
+        '<div class="at-name">' + esc(it.name || 'Sans nom') + '<small>' + rows + ' ressource' + (rows > 1 ? 's' : '') + '</small></div>' +
+        (unit > 0 ? '<div class="at-cost"><b>' + fmtInt(unit * n) + ' K</b><small>' + fmtInt(unit) + ' K l\'unité</small></div>' : '') +
+        '<div class="at-step"><button data-at="minus" aria-label="Moins">−</button>' +
+        '<input type="text" inputmode="numeric" data-at="qty" value="' + atQty(it.qty) + '">' +
+        '<button data-at="plus" aria-label="Plus">+</button></div>' +
+        '<button class="at-x" data-at="del" aria-label="Retirer">✕</button></div>';
+    }).join('');
+
+    var done = atDone(), tot = atTotals(), all = 0, left = 0;
+    atEl.shop.innerHTML = tot.length ? tot.map(function (t) {
+      var cost = t.price * t.qty, isDone = !!done[t.key];
+      all += cost; if (!isDone) left += cost;
+      return '<label class="at-row' + (isDone ? ' done' : '') + '"><input type="checkbox" data-at="chk" data-k="' + esc(t.key) + '"' + (isDone ? ' checked' : '') + '>' +
+        imgTag(t.icon, '') + '<div class="at-name">' + esc(t.name) +
+        (t.price > 0 ? '<small>' + fmtInt(t.price) + ' K l\'unité · ' + fmtInt(cost) + ' K</small>' : '') + '</div>' +
+        '<div class="at-q">× ' + fmtInt(t.qty) + '</div></label>';
+    }).join('') + (all > 0 ? '<div class="at-tot"><span>Coût total estimé : ' + fmtInt(all) + ' K</span><span>Reste à acheter : ' + fmtInt(left) + ' K</span></div>' : '')
+      : '<div class="soon">Aucune ressource avec une quantité.</div>';
+  }
+
+  atEl.items.addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('[data-at]') : null;
+    var row = e.target.closest ? e.target.closest('.at-item') : null;
+    if (!b || !row || b.dataset.at === 'qty') return;
+    var id = row.dataset.id, a = atSaved();
+    var idx = -1; a.forEach(function (it, i) { if (String(it.id) === id) idx = i; });
+    if (idx < 0) return;
+    if (b.dataset.at === 'del') a.splice(idx, 1);
+    else a[idx].qty = Math.max(1, atQty(a[idx].qty) + (b.dataset.at === 'plus' ? 1 : -1));
+    atStore(a); atRender();
+  });
+  atEl.items.addEventListener('change', function (e) {
+    var t = e.target, row = t.closest ? t.closest('.at-item') : null;
+    if (!row || t.dataset.at !== 'qty') return;
+    var a = atSaved();
+    a.forEach(function (it) { if (String(it.id) === row.dataset.id) it.qty = atQty(t.value); });
+    atStore(a); atRender();
+  });
+  atEl.shop.addEventListener('change', function (e) {
+    var t = e.target;
+    if (!t.dataset || t.dataset.at !== 'chk') return;
+    var d = atDone();
+    if (t.checked) d[t.dataset.k] = 1; else delete d[t.dataset.k];
+    atDoneStore(d); atRender();
+  });
+  document.getElementById('atUncheck').addEventListener('click', function () { atDoneStore({}); atRender(); setMsg(atEl.msg, ''); });
+  document.getElementById('atClear').addEventListener('click', function () {
+    if (!window.confirm('Vider tout l\'Atelier (objets et liste de courses) ?')) return;
+    atStore([]); atDoneStore({}); atRender(); setMsg(atEl.msg, 'Atelier vidé.', 'ok');
+  });
+  document.getElementById('atCopy').addEventListener('click', function () {
+    var lines = ['Objets à fabriquer :'];
+    atSaved().forEach(function (it) { lines.push('- ' + atQty(it.qty) + ' × ' + (it.name || 'Sans nom')); });
+    lines.push('', 'Liste de courses :');
+    var d = atDone();
+    atTotals().forEach(function (t) { lines.push((d[t.key] ? '[x] ' : '[ ] ') + fmtInt(t.qty) + ' × ' + t.name); });
+    var text = lines.join('\n');
+    var ok = function () { setMsg(atEl.msg, 'Liste copiée dans le presse-papiers.', 'ok'); };
+    var ko = function () { setMsg(atEl.msg, 'Copie impossible depuis ce navigateur.', 'err'); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(ok, ko); else ko();
+  });
+
+  // Depuis Investissements → Craft
+  document.getElementById('ivAtAdd').addEventListener('click', function () {
+    var snap = ivSnapshot();
+    var rows = snap.rows.filter(function (r) { return r && String(r.name || '').trim() && nv(r.qty) > 0; })
+      .map(function (r) { return { name: String(r.name).trim(), icon: r.icon || null, qty: nv(r.qty), price: r.price }; });
+    var name = snap.name.trim();
+    if (!name || !rows.length) { setMsg(ivEl.saveMsg, 'Choisis un item avec sa recette (nom + ressources) avant de l\'ajouter à l\'Atelier.', 'err'); return; }
+    var n = atQty(document.getElementById('ivAtQty').value);
+    var a = atSaved(), found = null;
+    a.forEach(function (it) { if (atKey(it.name) === atKey(name)) found = it; });
+    if (found) { found.qty = Math.min(9999, atQty(found.qty) + n); found.rows = rows; found.icon = snap.icon || found.icon || null; }
+    else a.push({ id: Date.now(), name: name, icon: snap.icon || null, qty: n, rows: rows });
+    atStore(a);
+    refreshViews();
+    setMsg(ivEl.saveMsg, 'Ajouté à l\'Atelier : ' + n + ' × ' + name + '.', 'ok');
+  });
+
   // ---------- Sauvegarde : export / import de toutes les données du site ----------
   var BK_PREFIX = 'ku_';
   var bkEl = {
@@ -1955,7 +2127,7 @@
       Object.keys(payload.data).forEach(function (k) {
         var v = payload.data[k];
         if (k.indexOf(BK_PREFIX) !== 0 || typeof v !== 'string') return;
-        if (k === 'ku_invest' || k === 'ku_flips') clean[k] = cleanList(v);
+        if (k === 'ku_invest' || k === 'ku_flips' || k === 'ku_atelier') clean[k] = cleanList(v);
         else if (k === 'ku_iv_draft' || k === 'ku_fl_draft') { var c = cleanDraft(v); if (c) clean[k] = c; }
         else clean[k] = v;
       });
