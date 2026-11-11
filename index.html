@@ -392,13 +392,20 @@
         Le seuil de rentabilité est le prix de vente minimum (après taxe de 2 %) pour ne pas perdre d'argent avec les prix saisis.
       </p>
 
+      <div class="at-add" style="margin-top:18px">
+        <label class="field" style="margin:0">
+          <span>Quantité craftée</span>
+          <div class="input-wrap"><input id="ivQty" type="text" inputmode="numeric" value="1" style="min-width:60px"></div>
+        </label>
+        <p class="opt" style="margin:0;flex:1;min-width:180px">Chaque exemplaire est enregistré séparément dans l'inventaire : tu pourras ensuite modifier le prix ou la forgemagie de chacun.</p>
+      </div>
       <div class="actions">
         <button class="btn-s" id="ivSave">📦 Enregistrer dans l'inventaire</button>
         <button class="btn-s" id="ivClear">🗑 Vider le formulaire</button>
       </div>
       <div class="at-add">
         <label class="field" style="margin:0">
-          <span>Nombre à fabriquer</span>
+          <span>Quantité pour l'Atelier</span>
           <div class="input-wrap"><input id="ivAtQty" type="text" inputmode="numeric" value="1" style="min-width:60px"></div>
         </label>
         <button class="btn-s alt" id="ivAtAdd">🛠️ Ajouter à l'Atelier</button>
@@ -1281,12 +1288,30 @@
     };
     var idx = -1;
     a.forEach(function (it, i) { if (it.id === entry.id) idx = i; });
-    if (idx >= 0) { keepHdv(entry, a[idx]); a[idx] = entry; } else { entry.inv = true; a.unshift(entry); }
-    iv.editing = entry.id;
+    var qtyEl = document.getElementById('ivQty');
+    var n = Math.floor(nv(qtyEl.value)); n = n < 1 ? 1 : (n > 200 ? 200 : n);
+    var msg;
+    if (idx >= 0) {
+      // modification d'un exemplaire existant : un seul objet est mis à jour
+      keepHdv(entry, a[idx]); a[idx] = entry;
+      msg = entry.inv ? 'Mis à jour dans l\'inventaire : ' + name + '.' : 'Enregistré : ' + name + ' (déjà en vente, mis à jour).';
+      if (n > 1) msg += ' La quantité n\'est utilisée que pour un nouvel objet : clique sur « Vider le formulaire » pour en créer d\'autres.';
+    } else {
+      // nouveaux objets : un exemplaire indépendant par unité craftée
+      var base = Date.now();
+      for (var k = n - 1; k >= 0; k--) {
+        var copy = JSON.parse(JSON.stringify(entry));
+        copy.id = base + k; copy.inv = true;
+        a.unshift(copy);
+      }
+      iv.editing = base;
+      msg = n > 1 ? n + ' exemplaires de ' + name + ' enregistrés séparément dans l\'inventaire.' : 'Enregistré dans l\'inventaire : ' + name + '. Tu le retrouves dans l\'onglet Inventaire.';
+    }
+    qtyEl.value = '1';
     ivStore(a);
     refreshViews();
     ivCompute();
-    setMsg(ivEl.saveMsg, entry.inv ? 'Enregistré dans l\'inventaire : ' + name + '. Tu le retrouves dans l\'onglet Inventaire.' : 'Enregistré : ' + name + ' (déjà en vente, mis à jour).', 'ok');
+    setMsg(ivEl.saveMsg, msg, 'ok');
   });
   ivEl.clear.addEventListener('click', function () {
     ivApply({});
