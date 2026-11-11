@@ -250,7 +250,8 @@
   .at-x { background: none; border: 0; color: var(--muted); font-size: 18px; cursor: pointer; padding: 4px 6px; }
   .at-row input[type=checkbox] { width: 22px; height: 22px; flex: none; accent-color: var(--accent); }
   .at-row.done .at-name { text-decoration: line-through; opacity: .5; }
-  .at-q { flex: none; font-weight: 700; }
+  .at-q { flex: none; font-weight: 700; min-width: 44px; text-align: right; }
+  .at-stock { width: 64px; min-width: 0; text-align: center; flex: none; }
   .at-cost { flex: none; text-align: right; line-height: 1.25; }
   .at-cost small { display: block; font-size: 11px; color: var(--muted); }
   .at-tot { display: flex; justify-content: space-between; padding: 10px 4px 0; font-weight: 600; flex-wrap: wrap; gap: 6px; }
@@ -264,9 +265,10 @@
   <nav id="nav">
     <button data-tab="dashboard" class="active">Dashboard 🚀</button>
     <button data-tab="investissements">Investissements 🪙</button>
+    <button data-tab="inventaire">Inventaire 📦</button>
     <button data-tab="atelier">Atelier 🛠️</button>
-    <button data-tab="calculateurs">Calculateurs 🧮</button>
     <button data-tab="hdv">Hôtel de vente 🏷️</button>
+    <button data-tab="calculateurs">Calculateurs 🧮</button>
     <button data-tab="sauvegarde">Sauvegarde 💾</button>
   </nav>
 </header>
@@ -383,7 +385,7 @@
     <div class="iv-sec">
       <div class="section-title">Résultat</div>
       <div class="result">
-        <div class="card"><div class="k">Bénéfice net</div><div class="v" id="ivNet">–</div></div>
+        <div class="card"><div class="k">Coût de craft</div><div class="v" id="ivNet">–</div></div>
         <div class="card"><div class="k">Seuil de rentabilité</div><div class="v" id="ivSeuil">–</div></div>
       </div>
       <p class="opt" style="margin:10px 0 0">
@@ -391,7 +393,7 @@
       </p>
 
       <div class="actions">
-        <button class="btn-s" id="ivSave">💾 Enregistrer</button>
+        <button class="btn-s" id="ivSave">📦 Enregistrer dans l'inventaire</button>
         <button class="btn-s" id="ivClear">🗑 Vider le formulaire</button>
       </div>
       <div class="at-add">
@@ -452,6 +454,13 @@
       </div>
 
     </div><!-- /iv-flip -->
+  </section>
+
+  <section id="inventaire">
+    <h2>Inventaire 📦</h2>
+    <p class="opt" style="margin-top:0">Tes crafts enregistrés, pas encore en vente. Mets-les en vente quand tu les as posés en jeu.</p>
+    <div class="msg" id="invMsg"></div>
+    <div id="hdvInv"></div>
   </section>
 
   <section id="atelier">
@@ -1145,7 +1154,8 @@
       var cell = document.getElementById('ivSub' + i);
       if (cell) cell.textContent = s ? fmtInt(s) : '–';
     });
-    setSigned(ivEl.net, fmtInt(c.net) + ' K', c.net);
+    ivEl.net.textContent = c.cout > 0 ? fmtInt(c.cout - c.gain) + ' K' : '–';
+    ivEl.net.className = 'v';
     ivEl.seuil.textContent = c.seuil === null ? '–' : fmtInt(c.seuil) + ' K';
     try { localStorage.setItem('ku_iv_draft', JSON.stringify(ivSnapshot())); } catch (e) {}
   }
@@ -1271,12 +1281,12 @@
     };
     var idx = -1;
     a.forEach(function (it, i) { if (it.id === entry.id) idx = i; });
-    if (idx >= 0) { keepHdv(entry, a[idx]); a[idx] = entry; } else a.unshift(entry);
+    if (idx >= 0) { keepHdv(entry, a[idx]); a[idx] = entry; } else { entry.inv = true; a.unshift(entry); }
     iv.editing = entry.id;
     ivStore(a);
     refreshViews();
     ivCompute();
-    setMsg(ivEl.saveMsg, 'Enregistré : ' + name + '. Il apparaît dans Hôtel de vente.', 'ok');
+    setMsg(ivEl.saveMsg, entry.inv ? 'Enregistré dans l\'inventaire : ' + name + '. Tu le retrouves dans l\'onglet Inventaire.' : 'Enregistré : ' + name + ' (déjà en vente, mis à jour).', 'ok');
   });
   ivEl.clear.addEventListener('click', function () {
     ivApply({});
@@ -1503,10 +1513,12 @@
     return p * (1 - TAX) - entryCost(e) - entryFees(e);
   }
   function isSold(e) { return !!e.it.soldAt; }
+  function isInv(e) { return !!e.it.inv && !e.it.soldAt; }
+  function isListed(e) { return !e.it.soldAt && !e.it.inv; }
 
   // Quand on ré-enregistre depuis un calculateur, on garde l'historique de l'HDV
   function keepHdv(entry, old) {
-    ['fees', 'updates', 'soldAt', 'soldPrice', 'soldNet'].forEach(function (k) {
+    ['fees', 'updates', 'soldAt', 'soldPrice', 'soldNet', 'inv'].forEach(function (k) {
       if (old[k] != null) entry[k] = old[k];
     });
     if (old.date) entry.date = old.date;
@@ -1528,7 +1540,8 @@
   var hdvEl = {
     list: document.getElementById('hdvList'), info: document.getElementById('hdvInfo'),
     soldList: document.getElementById('hdvSoldList'), soldSum: document.getElementById('hdvSoldSum'),
-    soldBox: document.getElementById('hdvSoldBox')
+    soldBox: document.getElementById('hdvSoldBox'),
+    inv: document.getElementById('hdvInv')
   };
 
   function hdvItemHtml(e) {
@@ -1550,6 +1563,15 @@
       '<button class="btn-s alt" data-act="edit">Modifier le calcul</button>' +
       '<button class="btn-s alt" data-act="rm">Supprimer</button></div></div>';
   }
+  function hdvInvHtml(e) {
+    var it = e.it, price = entryPrice(e), cost = entryCost(e), net = price * (1 - TAX) - cost;
+    return '<div class="saved-item" data-k="' + e.kind + '" data-id="' + it.id + '"><div>' +
+      '<div class="n">' + imgTag(it.icon, 'si') + '<span>' + esc(it.name) + '</span></div>' +
+      '<div class="s">Coût de craft : ' + fmtInt(cost) + ' K' + (price > 0 ? ' · Prix prévu : ' + fmtInt(price) + ' K · Bénéfice estimé : ' + fmtInt(net) + ' K' : '') + '</div></div>' +
+      '<div class="b"><button class="btn-s" data-act="list">🏷️ Mettre en vente</button>' +
+      '<button class="btn-s alt" data-act="edit">Modifier le calcul</button>' +
+      '<button class="btn-s alt" data-act="rm">Supprimer</button></div></div>';
+  }
   function dateFr(ts) {
     return new Date(ts).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
   }
@@ -1564,7 +1586,8 @@
   }
   function hdvRender() {
     var all = hdvEntries();
-    var act = all.filter(function (e) { return !isSold(e); });
+    var act = all.filter(isListed);
+    var inv = all.filter(isInv);
     var sold = all.filter(isSold).sort(function (a, b) { return b.it.soldAt - a.it.soldAt; });
 
     hdvEl.info.textContent = act.length
@@ -1572,7 +1595,11 @@
       : '';
     hdvEl.list.innerHTML = act.length
       ? act.map(hdvItemHtml).join('')
-      : '<div class="soon">Aucun objet en vente. Enregistre un craft ou un achat-revente depuis l\'onglet Investissements.</div>';
+      : '<div class="soon">Aucun objet en vente. Mets un objet de ton Inventaire en vente, ou enregistre un achat-revente depuis Investissements.</div>';
+
+    hdvEl.inv.innerHTML = inv.length
+      ? inv.map(hdvInvHtml).join('')
+      : '<div class="soon" style="margin-bottom:18px">Inventaire vide. Enregistre un craft depuis Investissements : il arrivera ici.</div>';
 
     hdvEl.soldSum.textContent = 'Vendus (' + sold.length + ')';
     hdvEl.soldList.innerHTML = sold.length
@@ -1627,6 +1654,10 @@
         it.soldNet = entryNet(x);
       });
       refreshViews();
+    } else if (act === 'list') {
+      updateEntry(kind, id, function (it) { delete it.inv; it.date = new Date().toISOString(); });
+      refreshViews();
+      setMsg(document.getElementById('invMsg'), '« ' + entry.it.name + ' » est maintenant dans l\'onglet Hôtel de vente.', 'ok');
     } else if (act === 'unsold') {
       updateEntry(kind, id, function (it) { delete it.soldAt; delete it.soldPrice; delete it.soldNet; });
       refreshViews();
@@ -1651,6 +1682,7 @@
   }
   hdvEl.list.addEventListener('click', hdvClick);
   hdvEl.soldList.addEventListener('click', hdvClick);
+  hdvEl.inv.addEventListener('click', hdvClick);
   hdvEl.list.addEventListener('input', function (e) {
     if (e.target.classList && e.target.classList.contains('hp')) hdvPreview(e.target.closest('.hdv-item'));
   });
@@ -1728,7 +1760,7 @@
 
   function dashRender() {
     var all = hdvEntries();
-    var act = all.filter(function (e) { return !isSold(e); });
+    var act = all.filter(isListed);
     var ben = 0;
     act.forEach(function (e) { ben += entryNet(e); });
     setSigned(document.getElementById('dBen'), fmtInt(ben) + ' K', ben);
@@ -1917,6 +1949,9 @@
     try { var d = JSON.parse(localStorage.getItem('ku_atelier_done') || '{}'); return d && typeof d === 'object' && !Array.isArray(d) ? d : {}; } catch (e) { return {}; }
   }
   function atDoneStore(d) { try { localStorage.setItem('ku_atelier_done', JSON.stringify(d)); } catch (e) {} }
+  function atStock() {
+    try { var d = JSON.parse(localStorage.getItem('ku_atelier_stock') || '{}'); return d && typeof d === 'object' && !Array.isArray(d) ? d : {}; } catch (e) { return {}; }
+  }
   function atKey(n) { return String(n).trim().toLowerCase(); }
   function atQty(v) { var n = Math.floor(nv(v)); return n < 1 ? 1 : (n > 9999 ? 9999 : n); }
 
@@ -1960,14 +1995,17 @@
         '<button class="at-x" data-at="del" aria-label="Retirer">✕</button></div>';
     }).join('');
 
-    var done = atDone(), tot = atTotals(), all = 0, left = 0;
+    var done = atDone(), stock = atStock(), tot = atTotals(), all = 0, left = 0;
     atEl.shop.innerHTML = tot.length ? tot.map(function (t) {
-      var cost = t.price * t.qty, isDone = !!done[t.key];
+      var have = Math.max(0, nv(stock[t.key])), need = Math.max(0, t.qty - have);
+      var cost = t.price * need, isDone = !!done[t.key] || need === 0;
       all += cost; if (!isDone) left += cost;
-      return '<label class="at-row' + (isDone ? ' done' : '') + '"><input type="checkbox" data-at="chk" data-k="' + esc(t.key) + '"' + (isDone ? ' checked' : '') + '>' +
-        imgTag(t.icon, '') + '<div class="at-name">' + esc(t.name) +
-        (t.price > 0 ? '<small>' + fmtInt(t.price) + ' K l\'unité · ' + fmtInt(cost) + ' K</small>' : '') + '</div>' +
-        '<div class="at-q">× ' + fmtInt(t.qty) + '</div></label>';
+      var sub = 'Besoin : ' + fmtInt(t.qty) + (have > 0 ? ' · stock : ' + fmtInt(have) : '') +
+        (t.price > 0 && need > 0 ? ' · ' + fmtInt(cost) + ' K' : '');
+      return '<div class="at-row' + (isDone ? ' done' : '') + '"><input type="checkbox" data-at="chk" data-k="' + esc(t.key) + '"' + (isDone ? ' checked' : '') + (need === 0 ? ' disabled' : '') + '>' +
+        imgTag(t.icon, '') + '<div class="at-name">' + esc(t.name) + '<small>' + sub + '</small></div>' +
+        '<input class="at-stock" type="text" inputmode="numeric" placeholder="Stock" aria-label="Stock de ' + esc(t.name) + '" data-at="stock" data-k="' + esc(t.key) + '" value="' + (have > 0 ? esc(fmtInt(have)) : '') + '">' +
+        '<div class="at-q">× ' + fmtInt(need) + '</div></div>';
     }).join('') + (all > 0 ? '<div class="at-tot"><span>Coût total estimé : ' + fmtInt(all) + ' K</span><span>Reste à acheter : ' + fmtInt(left) + ' K</span></div>' : '')
       : '<div class="soon">Aucune ressource avec une quantité.</div>';
   }
@@ -1992,6 +2030,13 @@
   });
   atEl.shop.addEventListener('change', function (e) {
     var t = e.target;
+    if (t.dataset && t.dataset.at === 'stock') {
+      var st = atStock(), v = Math.floor(nv(t.value));
+      if (v > 0) st[t.dataset.k] = v; else delete st[t.dataset.k];
+      try { localStorage.setItem('ku_atelier_stock', JSON.stringify(st)); } catch (e) {}
+      atRender();
+      return;
+    }
     if (!t.dataset || t.dataset.at !== 'chk') return;
     var d = atDone();
     if (t.checked) d[t.dataset.k] = 1; else delete d[t.dataset.k];
@@ -2000,14 +2045,18 @@
   document.getElementById('atUncheck').addEventListener('click', function () { atDoneStore({}); atRender(); setMsg(atEl.msg, ''); });
   document.getElementById('atClear').addEventListener('click', function () {
     if (!window.confirm('Vider tout l\'Atelier (objets et liste de courses) ?')) return;
-    atStore([]); atDoneStore({}); atRender(); setMsg(atEl.msg, 'Atelier vidé.', 'ok');
+    atStore([]); atDoneStore({}); try { localStorage.removeItem('ku_atelier_stock'); } catch (e) {} atRender(); setMsg(atEl.msg, 'Atelier vidé.', 'ok');
   });
   document.getElementById('atCopy').addEventListener('click', function () {
     var lines = ['Objets à fabriquer :'];
     atSaved().forEach(function (it) { lines.push('- ' + atQty(it.qty) + ' × ' + (it.name || 'Sans nom')); });
     lines.push('', 'Liste de courses :');
     var d = atDone();
-    atTotals().forEach(function (t) { lines.push((d[t.key] ? '[x] ' : '[ ] ') + fmtInt(t.qty) + ' × ' + t.name); });
+    var stk = atStock();
+    atTotals().forEach(function (t) {
+      var need = Math.max(0, t.qty - Math.max(0, nv(stk[t.key])));
+      if (need > 0) lines.push((d[t.key] ? '[x] ' : '[ ] ') + fmtInt(need) + ' × ' + t.name);
+    });
     var text = lines.join('\n');
     var ok = function () { setMsg(atEl.msg, 'Liste copiée dans le presse-papiers.', 'ok'); };
     var ko = function () { setMsg(atEl.msg, 'Copie impossible depuis ce navigateur.', 'err'); };
@@ -2053,10 +2102,12 @@
   function backupRender() {
     var all = hdvEntries();
     var sold = all.filter(isSold).length;
-    var act = all.length - sold;
+    var act = all.filter(isListed).length;
     bkEl.summary.textContent = all.length
       ? 'Actuellement sur cet appareil : ' + plural(act, 'objet en vente', 'objets en vente') + ' et ' + plural(sold, 'objet vendu', 'objets vendus') + '.'
       : 'Actuellement sur cet appareil : aucun objet enregistré.';
+    var nInv = all.filter(isInv).length;
+    if (nInv) bkEl.summary.textContent += ' ' + plural(nInv, 'objet', 'objets') + ' en inventaire.';
   }
 
   function bkExport() {
