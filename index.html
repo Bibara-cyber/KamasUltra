@@ -1400,31 +1400,46 @@
     return String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
       .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
   }
-  // Craft : seulement les items qui ont une recette. Si DofusDB n'indique pas les recettes, rien n'est masqué.
-  function itemHasRecipe(o) {
-    return Array.isArray(o.recipeIds) ? o.recipeIds.length > 0 : null;
+  // Craft : seulement les items qui ont une recette (l'id d'une recette est celui de l'objet fabriqué).
+  // Si DofusDB ne répond pas à cette vérification, rien n'est masqué.
+  function craftableSet(ids) {
+    function q(field) {
+      var url = API + '/recipes?$limit=50&$select[]=id&$select[]=resultId&' +
+        ids.map(function (id) { return field + '[$in][]=' + encodeURIComponent(id); }).join('&');
+      return getJson(url).then(function (r) {
+        var rows = r && r.data ? r.data : (Array.isArray(r) ? r : []);
+        var set = {};
+        rows.forEach(function (x) { if (x && x.resultId != null) set[x.resultId] = 1; if (x && x.id != null) set[x.id] = 1; });
+        return set;
+      });
+    }
+    return q('resultId').then(function (set) {
+      return Object.keys(set).length ? set : q('id');
+    }).catch(function () { return null; });
   }
   function fetchItems(term, opts) {
     opts = opts || {};
     var rx = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    var base = API + '/items?lang=fr&$limit=' + (opts.recipe ? 50 : 12) + '&$select[]=id&$select[]=name&$select[]=level&$select[]=iconId' +
-      (opts.recipe ? '&$select[]=recipeIds' : '');
+    var base = API + '/items?lang=fr&$limit=' + (opts.recipe ? 50 : 12) + '&$select[]=id&$select[]=name&$select[]=level&$select[]=iconId';
     // Plusieurs formulations tentées l'une après l'autre jusqu'à obtenir des résultats
     var tries = [
       base + '&name.fr[$regex]=' + encodeURIComponent(rx) + '&name.fr[$options]=i',
       base + '&slug.fr[$regex]=' + encodeURIComponent(slugify(term))
     ];
+    function toList(raw) {
+      return raw.slice(0, 12).map(function (o) { return { id: o.id, name: nameOf(o), level: o.level, icon: o.iconId }; });
+    }
     function attempt(k) {
       if (k >= tries.length) return Promise.resolve({ list: [], hidden: 0 });
       return getJson(tries[k]).then(function (r) {
         var raw = (r && r.data ? r.data : (Array.isArray(r) ? r : []))
           .filter(function (o) { return o && o.id && nameOf(o); });
         if (!raw.length) return attempt(k + 1);
-        var kept = opts.recipe ? raw.filter(function (o) { return itemHasRecipe(o) !== false; }) : raw;
-        return {
-          hidden: raw.length - kept.length,
-          list: kept.slice(0, 12).map(function (o) { return { id: o.id, name: nameOf(o), level: o.level, icon: o.iconId }; })
-        };
+        if (!opts.recipe) return { list: toList(raw), hidden: 0 };
+        return craftableSet(raw.map(function (o) { return o.id; })).then(function (set) {
+          var kept = set ? raw.filter(function (o) { return set[o.id]; }) : raw;
+          return { list: toList(kept), hidden: raw.length - kept.length };
+        });
       }).catch(function () { return attempt(k + 1); });
     }
     return attempt(0);
