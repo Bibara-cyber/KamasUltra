@@ -149,6 +149,11 @@
   .ptable { overflow-x: auto; }
   .ptable table { min-width: 460px; }
   .ptable th small { display: block; color: var(--muted); font-weight: 400; }
+  .psec { margin-top: 24px; padding: 14px; border: 1px solid var(--pc); border-left-width: 5px; border-radius: 12px; background: rgba(255,255,255,.03); }
+  .psec-h { margin: 0 0 12px; font-size: 20px; color: var(--pc); }
+  .ptable table.tt { min-width: 0; }
+  .ptable table.tt td, .ptable table.tt th { white-space: nowrap; padding-left: 4px; padding-right: 4px; }
+  .ptable table.tt input { min-width: 0; width: 84px; }
   .ptable td:first-child { white-space: nowrap; font-weight: 600; }
   .ptable input {
     width: 100%; min-width: 70px; background: var(--field); border: 0;
@@ -260,8 +265,12 @@
   .alm-fav { font-size: 14px; padding: 8px 12px; margin-top: 10px; border-left: 3px solid var(--accent); background: #232323; border-radius: 0 8px 8px 0; }
   .alm-fav span { color: var(--muted); }
   .alm-seg { display: flex; gap: 8px; margin: 14px 0 10px; flex-wrap: wrap; }
-  .alm-chip { border: 1px solid var(--border); background: var(--field); color: var(--muted); padding: 6px 12px; border-radius: 999px; font: inherit; font-size: 13px; cursor: pointer; }
-  .alm-chip.on { background: var(--accent); border-color: var(--accent); color: #1a1a1a; font-weight: 600; }
+  .alm-chip, .chip { border: 1px solid var(--border); background: var(--field); color: var(--muted); padding: 6px 12px; border-radius: 999px; font: inherit; font-size: 13px; cursor: pointer; }
+  .alm-chip.on, .chip.on { background: var(--accent); border-color: var(--accent); color: #1a1a1a; font-weight: 600; }
+  .ptable label.pk { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+  .ptable label.pk input { width: 18px; height: 18px; min-width: 0; padding: 0; margin: 0; flex: none; }
+  .ptable th label.pk { justify-content: flex-start; }
+  .ptable .off { opacity: .35; }
   .alm-pick { margin-top: 14px; font-size: 14px; }
   .alm-pick summary { cursor: pointer; color: var(--muted); }
   .alm-pick .check { display: flex; margin: 8px 0 0; }
@@ -328,6 +337,7 @@
       <button data-tab="calculateurs">Calculateurs 🧮 <span class="chev">▸</span></button>
       <div class="sub">
         <button data-sub="calc-runes" data-parent="calculateurs">Runes</button>
+        <button data-sub="calc-transc" data-parent="calculateurs">Runes songes</button>
         <button data-sub="calc-alliances" data-parent="calculateurs">Alliances</button>
         <button data-sub="calc-montures" data-parent="calculateurs">Montures</button>
         <button data-sub="calc-parchemins" data-parent="calculateurs">Parchemins</button>
@@ -633,7 +643,7 @@
     <details>
       <summary>Voir le détail du calcul</summary>
       <table>
-        <thead><tr><th>Rune</th><th>Coût</th><th>Vente après taxe (2 %)</th><th>Bénef net</th></tr></thead>
+        <thead><tr><th>Rune</th><th>Coût</th><th>Prix de vente</th><th>Bénef net</th></tr></thead>
         <tbody id="detail"></tbody>
       </table>
     </details>
@@ -739,27 +749,45 @@
         <table id="pTable"></table>
       </div>
 
-      <label class="check">
-        <input type="checkbox" id="pNet" checked>
-        Déduire la taxe de mise en vente (2 %)
-      </label>
+      <div class="opt" style="margin:10px 0 0">
+        Voir les résultats pour :<br>
+        <select id="pfS" style="margin:6px 6px 0 0"></select>
+        <select id="pfE" style="margin:6px 0 0 0"></select>
+      </div>
 
-      <div class="section-title" style="margin-top:22px">👑 Top rentabilité</div>
-      <div class="result" id="pTop"></div>
 
-      <div class="section-title" style="margin-top:22px">Par catégorie</div>
-      <div class="grid" id="pCats"></div>
+      <div class="psec" style="--pc:#d9a441">
+        <h3 class="psec-h">🐉 Avitons</h3>
+        <div class="section-title">👑 Top rentabilité</div>
+        <div class="result" id="pTop"></div>
+        <div class="section-title" style="margin-top:18px">Par catégorie</div>
+        <div class="grid" id="pCats"></div>
+      </div>
 
-      <details>
-        <summary>Voir tous les scores</summary>
-        <div class="ptable"><table id="pScores"></table></div>
-      </details>
-
-      <p class="opt" style="margin-top:14px">
-        Score = prix de vente (après taxe) ÷ coût en avitons. Plus il est élevé, plus le parchemin est rentable.
-      </p>
+      <div class="psec" style="--pc:#4fb3a5">
+        <h3 class="psec-h">🧬 Génétons</h3>
+        <div class="section-title">👑 Top rentabilité</div>
+        <div class="result" id="pTopG"></div>
+        <div class="section-title" style="margin-top:18px">Par catégorie</div>
+        <div class="grid" id="pCatsG"></div>
+      </div>
 
     </div><!-- /calc-parchemins -->
+
+    <div class="calc" id="calc-transc">
+      <div class="section-title">Runes songes</div>
+      <label class="field">
+        <span>Prix du Reflet onirique</span>
+        <div class="input-wrap">
+          <input id="tReflet" type="text" data-num inputmode="decimal" min="0" step="any" placeholder="0">
+          <span class="unit">K</span>
+        </div>
+      </label>
+
+      <div class="section-title" style="margin-top:22px">Seuil de rentabilité</div>
+      <div class="grid" id="tGrid"></div>
+      <p class="opt" style="margin:10px 0 0">Prix de mise en vente minimum pour être rentable, taxe de 2 % comprise.</p>
+    </div><!-- /calc-transc -->
   </section>
 
   <section id="hdv">
@@ -926,8 +954,8 @@
     var coutPA = 3 * base;
     var coutRA = el.mode.value === 'pa' ? 3 * pa : 9 * base;
 
-    var netPA = pa * (1 - TAX) - coutPA;
-    var netRA = ra * (1 - TAX) - coutRA;
+    var netPA = pa - coutPA;
+    var netRA = ra - coutRA;
 
     var best = netPA >= netRA ? { n: 'PA', v: netPA } : { n: 'RA', v: netRA };
     el.winner.textContent = best.n;
@@ -935,8 +963,8 @@
     el.net.className = 'v ' + (best.v >= 0 ? 'pos' : 'neg');
 
     el.detail.innerHTML =
-      row('PA', coutPA, pa * (1 - TAX), netPA) +
-      row('RA', coutRA, ra * (1 - TAX), netRA);
+      row('PA', coutPA, pa, netPA) +
+      row('RA', coutRA, ra, netRA);
 
     try {
       localStorage.setItem('ku_runes', JSON.stringify({
@@ -1067,7 +1095,7 @@
       // Prix de vente minimal pour ne pas perdre d'argent après la taxe de 2 %,
       // arrondi à la centaine inférieure (comme dans l'app Glide).
       var seuil = Math.floor((prix * gen) / (1 - TAX) / 100) * 100;
-      html += '<div class="card"><div class="k">Gen ' + gen + '</div><div class="v">' +
+      html += '<div class="card"><div class="k" style="font-size:18px;font-weight:700;color:var(--accent);margin-bottom:4px">Gen ' + gen + '</div><div class="v">' +
         fmtInt(seuil) + '</div></div>';
     }
     mGrid.innerHTML = html;
@@ -1087,34 +1115,32 @@
     { n: 'Agilité', e: '🟢' }, { n: 'Force', e: '🟤' }, { n: 'Chance', e: '🔵' }
   ];
   var P_SIZES = [
-    { n: 'Petit', e: '👏', c: 20 }, { n: 'Normal', e: '👌', c: 60 },
-    { n: 'Grand', e: '💪', c: 140 }, { n: 'Puissant', e: '🏋️', c: 340 }
+    { n: 'Petit', e: '👏', c: 20, g: 10 }, { n: 'Normal', e: '👌', c: 60, g: 30 },
+    { n: 'Grand', e: '💪', c: 140, g: 70 }, { n: 'Puissant', e: '🏋️', c: 340, g: 170 }
   ];
 
   var pTable = document.getElementById('pTable');
-  var pScores = document.getElementById('pScores');
   var pTop = document.getElementById('pTop');
   var pCats = document.getElementById('pCats');
-  var pNet = document.getElementById('pNet');
 
   // Construit le tableau de saisie (éléments en lignes, tailles en colonnes)
   var head = '<thead><tr><th></th>';
   P_SIZES.forEach(function (s) {
-    head += '<th>' + s.n + ' ' + s.e + '<small>' + s.c + ' avitons</small></th>';
+    head += '<th data-col="' + P_SIZES.indexOf(s) + '">' + s.n + ' ' + s.e + '</th>';
   });
   head += '</tr></thead>';
   var body = '<tbody>';
   P_ELEMS.forEach(function (el_, i) {
-    body += '<tr><td>' + el_.n + ' ' + el_.e + '</td>';
+    body += '<tr data-row="' + i + '"><td>' + el_.n + ' ' + el_.e + '</td>';
     P_SIZES.forEach(function (s, j) {
-      body += '<td><input type="text" data-num inputmode="decimal" min="0" step="any" ' +
+      body += '<td data-col="' + j + '"><input type="text" data-num inputmode="decimal" min="0" step="any" ' +
         'placeholder="—" data-e="' + i + '" data-s="' + j + '"></td>';
     });
     body += '</tr>';
   });
   body += '</tbody>';
   pTable.innerHTML = head + body;
-  var pInputs = pTable.querySelectorAll('input');
+  var pInputs = pTable.querySelectorAll('input[data-num]');
 
   function priceOf(input) {
     if (input.value === '') return null;
@@ -1122,22 +1148,34 @@
     return isFinite(v) && v > 0 ? v : null;
   }
 
-  function computeParchemins() {
-    var factor = pNet.checked ? 1 - TAX : 1;
-    var scores = P_ELEMS.map(function () { return P_SIZES.map(function () { return null; }); });
-    var saved = [];
+  // Filtres : menus déroulants (un seul type et/ou une seule statistique) ; les autres prix restent enregistrés
+  var pOn = { s: null, e: null };
+  function visS(s) { return pOn.s === null || pOn.s === s; }
+  function visE(e) { return pOn.e === null || pOn.e === e; }
+  var pfS = document.getElementById('pfS'), pfE = document.getElementById('pfE');
+  pfS.innerHTML = '<option value="">Tous les types</option>' + P_SIZES.map(function (x, i) { return '<option value="' + i + '">' + x.n + ' ' + x.e + '</option>'; }).join('');
+  pfE.innerHTML = '<option value="">Toutes les statistiques</option>' + P_ELEMS.map(function (x, i) { return '<option value="' + i + '">' + x.n + ' ' + x.e + '</option>'; }).join('');
+  function pApplyFilters() {
+    pTable.querySelectorAll('[data-col]').forEach(function (n) { n.classList.toggle('off', !visS(+n.dataset.col)); });
+    pTable.querySelectorAll('[data-row]').forEach(function (n) { n.classList.toggle('off', !visE(+n.dataset.row)); });
+  }
+  pfS.addEventListener('change', function () { pOn.s = pfS.value === '' ? null : +pfS.value; computeParchemins(); });
+  pfE.addEventListener('change', function () { pOn.e = pfE.value === '' ? null : +pfE.value; computeParchemins(); });
 
+  function pRender(ck, pTop, pCats) {
+    var factor = 1;
+    var scores = P_ELEMS.map(function () { return P_SIZES.map(function () { return null; }); });
     pInputs.forEach(function (inp) {
       var e = +inp.dataset.e, s = +inp.dataset.s;
       var p = priceOf(inp);
-      if (p !== null) scores[e][s] = p * factor / P_SIZES[s].c;
-      saved.push(inp.value);
+      if (p !== null) scores[e][s] = p * factor / P_SIZES[s][ck];
     });
-
     // Meilleur score global
     var best = null;
     scores.forEach(function (row, e) {
+      if (!visE(e)) return;
       row.forEach(function (sc, s) {
+        if (!visS(s)) return;
         if (sc !== null && (best === null || sc > best.sc)) best = { sc: sc, e: e, s: s };
       });
     });
@@ -1153,33 +1191,28 @@
     P_SIZES.forEach(function (sz, s) {
       var b = null;
       P_ELEMS.forEach(function (_, e) {
+        if (!visE(e)) return;
         var sc = scores[e][s];
         if (sc !== null && (b === null || sc > b.sc)) b = { sc: sc, e: e };
       });
       bestPerSize.push(b);
+      if (!visS(s)) return;
       cats += '<div class="card"><div class="k">' + sz.n + ' ' + sz.e + '</div>' +
         '<div class="v">' + (b ? fmtInt(b.sc) : '–') + '</div>' +
         '<div class="sub-line">' + (b ? P_ELEMS[b.e].n + ' ' + P_ELEMS[b.e].e : '') + '</div></div>';
     });
     pCats.innerHTML = cats;
 
-    // Tableau détaillé de tous les scores (meilleur de chaque colonne en vert)
-    var t = '<thead><tr><th></th>';
-    P_SIZES.forEach(function (s) { t += '<th>' + s.n + ' ' + s.e + '</th>'; });
-    t += '</tr></thead><tbody>';
-    P_ELEMS.forEach(function (el_, e) {
-      t += '<tr><td>' + el_.n + ' ' + el_.e + '</td>';
-      P_SIZES.forEach(function (_, s) {
-        var sc = scores[e][s];
-        var isBest = bestPerSize[s] && bestPerSize[s].e === e && sc !== null;
-        t += '<td class="' + (isBest ? 'pos' : '') + '">' + (sc === null ? '–' : fmtInt(sc)) + '</td>';
-      });
-      t += '</tr>';
-    });
-    pScores.innerHTML = t + '</tbody>';
+  }
 
+  function computeParchemins() {
+    pApplyFilters();
+    var saved = [];
+    pInputs.forEach(function (inp) { saved.push(inp.value); });
+    pRender('c', pTop, pCats);
+    pRender('g', document.getElementById('pTopG'), document.getElementById('pCatsG'));
     try {
-      localStorage.setItem('ku_parchemins', JSON.stringify({ prices: saved, net: pNet.checked }));
+      localStorage.setItem('ku_parchemins', JSON.stringify({ prices: saved, net: true }));
     } catch (e) {}
   }
 
@@ -1187,12 +1220,34 @@
     var sp = JSON.parse(localStorage.getItem('ku_parchemins') || 'null');
     if (sp) {
       pInputs.forEach(function (inp, i) { if (sp.prices && sp.prices[i] !== undefined) inp.value = sp.prices[i]; });
-      pNet.checked = sp.net !== false;
     }
   } catch (e) {}
   pInputs.forEach(function (inp) { inp.addEventListener('input', computeParchemins); });
-  pNet.addEventListener('change', computeParchemins);
   computeParchemins();
+
+  // ===== Runes songes : seuil de rentabilité = (quantité de Reflets × prix du reflet) ÷ (1 − taxe 2 %) =====
+  var T_RUNES = [
+    { n: 'Do So', q: 120 }, { n: 'Do Dist', q: 100 }, { n: 'Do Arme', q: 20 },
+    { n: 'Do Mélée', q: 80 }, { n: 'Ré Dist', q: 60 }, { n: 'Ré Mélée', q: 40 }
+  ];
+  var tReflet = document.getElementById('tReflet');
+  var tGrid = document.getElementById('tGrid');
+  function computeTransc() {
+    var v = parseFloat(String(tReflet.value).replace(/\s/g, '').replace(',', '.'));
+    var ok = isFinite(v) && v > 0;
+    tGrid.innerHTML = T_RUNES.map(function (r) {
+      var craft = ok ? v * r.q : null;
+      return '<div class="card"><div class="k" style="font-size:18px;font-weight:700;color:var(--accent);margin-bottom:4px">' + r.n + '</div>' +
+        '<div class="v">' + (ok ? fmtInt(Math.ceil(craft / (1 - TAX))) + ' K' : '–') + '</div></div>';
+    }).join('');
+    try { localStorage.setItem('ku_transc', JSON.stringify({ reflet: tReflet.value })); } catch (e) {}
+  }
+  try {
+    var st = JSON.parse(localStorage.getItem('ku_transc') || 'null');
+    if (st) tReflet.value = st.reflet || '';
+  } catch (e) {}
+  tReflet.addEventListener('input', computeTransc);
+  computeTransc();
 
   // ---------- Investissements (rentabilité d'un craft) ----------
   var API = 'https://api.dofusdb.fr';
