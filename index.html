@@ -606,7 +606,7 @@
     </label>
 
     <label class="field">
-      <span>Prix PA</span>
+      <span>Prix HDV PA</span>
       <div class="input-wrap">
         <input id="pa" type="text" data-num inputmode="decimal" min="0" step="any" value="1505">
         <span class="unit">K</span>
@@ -614,7 +614,7 @@
     </label>
 
     <label class="field">
-      <span>Prix RA</span>
+      <span>Prix HDV RA</span>
       <div class="input-wrap">
         <input id="ra" type="text" data-num inputmode="decimal" min="0" step="any" value="2500">
         <span class="unit">K</span>
@@ -635,7 +635,7 @@
     <div class="result">
       <div class="card"><div class="v" id="winner">–</div></div>
       <div class="card">
-        <div class="k">Bénef net</div>
+        <div class="k">Bénéfice avant mise en vente</div>
         <div class="v" id="winnerNet">–</div>
       </div>
     </div>
@@ -643,7 +643,7 @@
     <details>
       <summary>Voir le détail du calcul</summary>
       <table>
-        <thead><tr><th>Rune</th><th>Coût</th><th>Prix de vente</th><th>Bénef net</th></tr></thead>
+        <thead><tr><th>Rune</th><th>Coût</th><th>Prix HDV</th><th>Bénéfice avant mise en vente</th></tr></thead>
         <tbody id="detail"></tbody>
       </table>
     </details>
@@ -744,7 +744,7 @@
 
     <div class="calc" id="calc-parchemins">
 
-      <div class="section-title">Prix de vente</div>
+      <div class="section-title">Prix HDV</div>
       <div class="ptable">
         <table id="pTable"></table>
       </div>
@@ -1163,7 +1163,7 @@
   pfE.addEventListener('change', function () { pOn.e = pfE.value === '' ? null : +pfE.value; computeParchemins(); });
 
   function pRender(ck, pTop, pCats) {
-    var factor = 1;
+    var factor = 1; // prix HDV pris tels quels, aucune déduction
     var scores = P_ELEMS.map(function () { return P_SIZES.map(function () { return null; }); });
     pInputs.forEach(function (inp) {
       var e = +inp.dataset.e, s = +inp.dataset.s;
